@@ -102,6 +102,23 @@ python -c "from dotenv import load_dotenv; load_dotenv(); from google import gen
 It should print `ok`. The client is stored in a variable (`c`) on purpose, see
 Troubleshooting.
 
+## Running the app and tests
+
+```bash
+python main.py
+```
+
+Every start runs the whole test suite first. The app starts only if all tests pass
+and total coverage is at least 80% (`fail_under` in `pyproject.toml`). Otherwise it
+exits with code 1. To run only the tests and see the coverage report:
+
+```bash
+pytest
+```
+
+An HTML report is written to `htmlcov/`. New code needs tests, or coverage drops
+below the threshold and the app will not start.
+
 ## Models
 
 Model names live in `.env`, not in the code, so changing a model is a one-line edit.
