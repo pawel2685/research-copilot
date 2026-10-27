@@ -1,0 +1,5 @@
+google-adk
+pydantic
+pytest
+python-dotenv
+pytest-cov
