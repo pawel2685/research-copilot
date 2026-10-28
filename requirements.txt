@@ -3,3 +3,4 @@ pydantic
 pytest
 python-dotenv
 pytest-cov
+matplotlib>=3.9,<4
