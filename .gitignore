@@ -221,3 +221,4 @@ __marimo__/
 
 # Cache of model responses (agents/cache.py)
 .cache/
+.adk/

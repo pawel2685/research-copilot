@@ -5,7 +5,10 @@ Given a research question, it finds papers on arXiv, summarises them, checks its
 own claims and writes a short report with sources. Five agents work together, and
 two of them (Planner and Critic) are skipped when the time budget runs short.
 
-> Status: project setup. The agents are not implemented yet.
+> **Status:** the pipeline works end to end (search, summarise, write, check).
+> Retrieval and the Planner (part B) are not integrated yet: for now the app searches
+> five saved passages from `stubs/` and runs without the Planner. See
+> [docs/person_a/README.md](docs/person_a/README.md), section "Waiting for B".
 
 ## Requirements
 
@@ -112,10 +115,6 @@ The app prints a short Markdown report with its sources, then `Verified: yes` or
 `Verified: no`. Without a question it prints a usage line and exits with a non-zero
 code. It needs `MODEL_LIGHT` and `MODEL_HEAVY` in the local `.env`.
 
-> **Status:** retrieval (B) is not integrated yet. The app searches five saved
-> passages from `stubs/` and runs without the Planner. See "Waiting for B" in
-> [docs/person_a/README.md](docs/person_a/README.md).
-
 Every start runs the whole test suite first. The app starts only if all tests pass
 and total coverage is at least 80% (`fail_under` in `pyproject.toml`). Otherwise it
 exits with code 1. To run only the tests and see the coverage report:
@@ -126,6 +125,40 @@ pytest
 
 An HTML report is written to `htmlcov/`. New code needs tests, or coverage drops
 below the threshold and the app will not start.
+
+## Demo in the browser
+
+The same pipeline can be tried in the ADK web interface. From the repository root, with
+the virtual environment active and your `.env` filled in:
+
+```bash
+adk web demo
+```
+
+Open the address it prints (<http://127.0.0.1:8000> by default), choose
+`research_copilot` in the top left and type a research question. The interface shows
+every agent step: the parallel search branches, the Writer and the Critic. The report
+is the Writer's answer. Two differences from `python main.py`: the demo does not run
+the tests first, and it does not do the one revision after a rejecting Critic.
+
+## Experiments
+
+The evaluation compares five configurations, E0 to E4, each adding one thing to the
+previous one (hybrid search, compression, the Planner, the Critic). `get_run_config`
+returns the `RunConfig` of one of them, and `answer_with_stats` runs a question and also
+returns what the run cost:
+
+```python
+from agents.pipeline import answer_with_stats
+from evals.experiment_configs import get_run_config
+
+report, stats = answer_with_stats("What is LoRA?", get_run_config("E4"))
+print(stats)  # retrieved papers, model calls, tokens, latency
+```
+
+Set `LLM_CACHE=off` for measured runs (see the next section), or the numbers are wrong.
+E0 is the baseline: the same pipeline with every switch off. While part B is missing,
+the numbers describe the stand-in search and are only a test of the harness.
 
 ## Cache and retries
 
@@ -148,7 +181,7 @@ Model names live in `.env`, not in the code, so changing a model is a one-line e
 
 | Variable      | Model                   | Used for                          |
 |---------------|-------------------------|-----------------------------------|
-| `MODEL_LIGHT` | `gemini-3.5-flash-lite` | Planner, Searcher, Critic         |
+| `MODEL_LIGHT` | `gemini-3.5-flash-lite` | Planner, Searcher, Reader, Critic |
 | `MODEL_HEAVY` | `gemini-3.5-flash`      | Writer                            |
 
 Google retires models often. Older models such as `gemini-2.5-flash` already return
@@ -166,13 +199,14 @@ free tier column says **Free of charge**.
 
 ```
 research-copilot/
-├── agents/        ADK agents and the skipping logic
+├── agents/        ADK agents, the flow, skipping, cache, retries and run stats
+├── demo/          the pipeline as an agent for `adk web`
 ├── retrieval/     search over the paper corpus
 ├── context/       context compression
 ├── evals/         test questions, metrics and results
 ├── stubs/         stand-ins so the team can work in parallel
 ├── tests/         automated tests
-├── docs/          project documentation
+├── docs/          contributing rules and the stage-by-stage documentation
 ├── contracts.py   shared data types and function signatures
 ├── CLAUDE.md      instructions for AI assistants working in this repo
 ├── .env.example   template for your local .env

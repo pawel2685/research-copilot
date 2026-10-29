@@ -62,7 +62,8 @@ and returns its exit code. Zero means the gate passed.
 The entry point of the app, started with `python main.py`.
 
 - `run_app()` prints `Research Copilot: agents are not implemented yet.` and returns 0.
-  It is the placeholder that the real pipeline will replace.
+  It is the placeholder that the real pipeline will replace (done in A7: `run_app()`
+  now answers the question given on the command line).
 - `main()` runs the gate first. If the gate fails, it prints that the app was not
   started and returns 1. If it passes, it returns the result of `run_app()`.
 - The `__main__` guard exits with the return value of `main()`.

@@ -2,6 +2,10 @@
 
 Status: done.
 
+Note: from A7 on, the public entry point is `answer` in `agents/pipeline.py` (the ADK
+pipeline). `agents/baseline.py` stays as the plain-Python version without ADK and
+without model calls, and `agents/passages.py` is still used by the search tool.
+
 Goal: a plain-Python `answer(question, cfg)` that runs end to end on the stub search
 and C's real `compress()`, with no network call. The evaluation harness can call it from
 day one, and later stages reuse `compress_chunks` for compression.

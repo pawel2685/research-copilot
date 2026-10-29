@@ -29,7 +29,7 @@ evaluation tooling (C).
 | A7 | [Integration with B and C](a7-integration.md) | done (B stubbed) | A6 |
 | A8 | [Cache and retries](a8-cache-and-retries.md) | done | A6 |
 | A9 | [Evaluation hand-off](a9-evaluation-handoff.md) | done (B stubbed) | A7, A8 |
-| A10 | [Demo and cleanup](a10-demo-and-cleanup.md) | to do | A9 |
+| A10 | [Demo and cleanup](a10-demo-and-cleanup.md) | done (B stubbed) | A9 |
 
 The instructions for building each stage are in
 [implementation/](implementation/README.md), one plan per stage.
