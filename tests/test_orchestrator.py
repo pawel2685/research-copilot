@@ -1,12 +1,19 @@
 from google.adk.agents import LlmAgent, ParallelAgent, SequentialAgent
 
+from agents import cache
 from agents.critic import create_critic_agent
-from agents.orchestrator import build_pipeline, notes_keys
+from agents.orchestrator import build_pipeline, harden_agent, notes_keys
+from agents.retry import RETRY_OPTIONS
 from agents.tools import make_search_tool
 from contracts import RunConfig
 from stubs.search import search
+from tests.fake_llm import FakeLlm
 
 MODELS = ("light-model", "heavy-model")
+
+
+def _model_name(agent):
+    return agent.model.model
 
 
 def _planner():
@@ -50,12 +57,12 @@ def test_branches_have_unique_names_and_output_keys():
 def test_branches_have_the_branch_callback_and_use_the_light_model():
     branches = _build().sub_agents[0].sub_agents
     assert all(branch.before_agent_callback is not None for branch in branches)
-    assert all(a.model == "light-model" for b in branches for a in b.sub_agents)
+    assert all(_model_name(a) == "light-model" for b in branches for a in b.sub_agents)
 
 
 def test_writer_uses_the_heavy_model_and_reads_all_notes_as_optional():
     writer = _build().sub_agents[-1]
-    assert (writer.name, writer.model) == ("writer", "heavy-model")
+    assert (writer.name, _model_name(writer)) == ("writer", "heavy-model")
     for key in notes_keys():
         assert f"{{{key}?}}" in writer.instruction
 
@@ -115,5 +122,46 @@ def test_models_come_from_the_environment_when_not_given(monkeypatch):
     monkeypatch.setenv("MODEL_LIGHT", "env-light")
     monkeypatch.setenv("MODEL_HEAVY", "env-heavy")
     pipeline = build_pipeline(RunConfig(), search_tool=make_search_tool(search))
-    assert pipeline.sub_agents[-1].model == "env-heavy"
-    assert pipeline.sub_agents[0].sub_agents[0].sub_agents[0].model == "env-light"
+    assert _model_name(pipeline.sub_agents[-1]) == "env-heavy"
+    assert _model_name(pipeline.sub_agents[0].sub_agents[0].sub_agents[0]) == "env-light"
+
+
+def _all_llm_agents(pipeline):
+    agents = []
+    for step in pipeline.sub_agents:
+        if isinstance(step, LlmAgent):
+            agents.append(step)
+        else:
+            agents += [a for branch in step.sub_agents for a in branch.sub_agents]
+    return agents
+
+
+def test_every_agent_has_retries_and_the_cache():
+    pipeline = _build(planner=_planner(), critic=create_critic_agent("m"))
+    agents = _all_llm_agents(pipeline)
+    assert len(agents) == 11  # planner, 4 x (searcher, reader), writer, critic
+    for agent in agents:
+        assert agent.model.retry_options == RETRY_OPTIONS
+        assert agent.before_model_callback[0] is cache.before_model
+        assert agent.after_model_callback[0] is cache.after_model
+
+
+def test_the_original_agent_is_not_modified():
+    planner = LlmAgent(name="planner", model="plain-name", instruction="x")
+    _build(planner=planner)
+    assert planner.model == "plain-name"
+    assert planner.before_model_callback is None
+
+
+def test_a_model_object_is_kept():
+    fake = FakeLlm()
+    assert harden_agent(LlmAgent(name="a", model=fake, instruction="x")).model is fake
+
+
+def test_existing_model_callbacks_are_kept_after_the_cache():
+    def mine(ctx, request):
+        return None
+
+    agent = LlmAgent(name="a", model="m", instruction="x", before_model_callback=mine)
+    hardened = harden_agent(agent)
+    assert hardened.before_model_callback == [cache.before_model, mine]

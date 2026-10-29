@@ -13,7 +13,7 @@ from google.genai import types
 
 from agents.config import load_models
 from agents.critic import CriticResult, critic_skipped_result
-from agents.orchestrator import build_pipeline, notes_keys
+from agents.orchestrator import build_pipeline, harden_agent, notes_keys
 from agents.skipping import is_verified, normalize_sub_questions
 from agents.tools import make_search_tool
 from agents.writer import create_writer_agent
@@ -107,8 +107,10 @@ async def run_pipeline(
         and critic_result.revision_instructions
         and deadline_at - time.time() > 0
     ):
-        writer = create_writer_agent(
-            models[1], notes_keys=notes_keys(), optional_notes=True, revision=True
+        writer = harden_agent(
+            create_writer_agent(
+                models[1], notes_keys=notes_keys(), optional_notes=True, revision=True
+            )
         )
         revision_state = {
             key: value for key, value in state.items() if key in notes_keys()

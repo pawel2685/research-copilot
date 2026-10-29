@@ -27,7 +27,7 @@ evaluation tooling (C).
 | A5 | [ADK agents](a5-adk-agents.md) | done | A3 |
 | A6 | [ADK orchestration](a6-orchestration.md) | done | A4, A5 |
 | A7 | [Integration with B and C](a7-integration.md) | done (B stubbed) | A6 |
-| A8 | [Cache and retries](a8-cache-and-retries.md) | to do | A6 |
+| A8 | [Cache and retries](a8-cache-and-retries.md) | done | A6 |
 | A9 | [Evaluation hand-off](a9-evaluation-handoff.md) | to do | A7, A8 |
 | A10 | [Demo and cleanup](a10-demo-and-cleanup.md) | to do | A9 |
 

@@ -91,15 +91,19 @@ These were checked by inspecting the package in the project `.venv`:
   content is truthy, the agent run is skipped.
 - `LlmAgent` has the fields `name`, `model`, `instruction`, `tools` (plain functions
   are accepted), `output_key`, `output_schema`, `before_agent_callback`,
-  `before_model_callback`, `after_model_callback`, `retry_config`, `timeout` and
-  `sub_agents`.
+  `before_model_callback`, `after_model_callback`, `timeout` and `sub_agents`. It has
+  no `retry_config` (corrected in A8).
 - `SequentialAgent` and `ParallelAgent` take `name` and `sub_agents`.
-- `RetryConfig(max_attempts, initial_delay, max_delay, backoff_factor, jitter,
-  exceptions)`.
+- Retries: `Gemini(model=..., retry_options=types.HttpRetryOptions(attempts,
+  initial_delay, max_delay, exp_base, jitter, http_status_codes))`. `LlmAgent.model` can
+  be such an object. The `RetryConfig` in the package is for workflow nodes only.
+- `before_model_callback(callback_context, llm_request)` and
+  `after_model_callback(callback_context, llm_response)` return an optional
+  `LlmResponse`. The after callback does not get the request.
+- Checked in A6: `{key}` placeholders in `instruction` are filled from session state
+  (`{key?}` is optional, a missing required key raises `KeyError`), and
+  `get_session(*, app_name, user_id, session_id)` returns `Optional[Session]`.
 
 Not checked yet. Verify with a small manual run before relying on it:
 
-- `{key}` placeholders in `instruction` are filled from session state (and `{key?}`
-  is optional).
-- The `get_session` signature and the shape of `Event.usage_metadata`.
-- The exact signature of `before_model_callback` and `after_model_callback`.
+- The shape of `Event.usage_metadata` (needed in A9 for the token counts).

@@ -127,6 +127,21 @@ pytest
 An HTML report is written to `htmlcov/`. New code needs tests, or coverage drops
 below the threshold and the app will not start.
 
+## Cache and retries
+
+The free tier has low rate limits and sometimes answers with a temporary error, so
+every model call is protected:
+
+- **Retries.** A `429` (rate limit) or a `503` (high demand) is retried up to 4 times
+  with a growing pause. Other errors are raised at once. Above all a `404` (the model is
+  not available for your account) is never retried, because it will not go away.
+- **Response cache.** Answers of the model are stored as JSON files in `.cache/llm/`
+  (ignored by git), so repeating a run does not call the API again. Set
+  `LLM_CACHE_DIR` to use another directory.
+- **Switch it off for measurements.** The evaluation measures latency and token use,
+  and a cached answer returns at once and costs no tokens. Set `LLM_CACHE=off` for
+  every measured run (for example in `.env`). Delete `.cache/` to start fresh.
+
 ## Models
 
 Model names live in `.env`, not in the code, so changing a model is a one-line edit.

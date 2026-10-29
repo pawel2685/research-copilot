@@ -16,9 +16,11 @@ from typing import Any
 
 from google.adk.agents import LlmAgent, ParallelAgent, SequentialAgent
 
+from agents.cache import with_cache
 from agents.config import load_models
 from agents.critic import critic_skipped_result
 from agents.reader import create_reader_agent
+from agents.retry import make_model
 from agents.searcher import create_searcher_agent
 from agents.skipping import (
     CRITIC_MIN_LEFT_S,
@@ -38,6 +40,15 @@ _CRITIC_SKIP_TEXT = critic_skipped_result(
 def _planner_skip_text(ctx: Any) -> str:
     """A skipped Planner "plans" the original question as the only sub-question."""
     return json.dumps([ctx.state["question"]])
+
+
+def harden_agent(agent: LlmAgent) -> LlmAgent:
+    """Copy of `agent` with retries on its model and the response cache.
+
+    A model name becomes a Gemini model that retries `429` and `503`. A model object
+    (for example a fake in tests) is kept. The agent that was passed in is not modified.
+    """
+    return with_cache(agent.model_copy(update={"model": make_model(agent.model)}))
 
 
 def notes_keys() -> list[str]:
@@ -79,6 +90,7 @@ def _build_branch(
         input_key=f"search_results_{n}",
         output_key=f"reading_notes_{n}",
     )
+    searcher, reader = harden_agent(searcher), harden_agent(reader)
     return SequentialAgent(
         name=f"branch_{n}",
         sub_agents=[searcher, reader],
@@ -98,7 +110,8 @@ def build_pipeline(
 
     `models` is `(light, heavy)`, read from `.env` when it is `None`. The Planner and
     the Critic are only part of the flow when `cfg` switches them on and an agent is
-    given. They get a callback that skips them when time runs short.
+    given. They get a callback that skips them when time runs short. Every agent gets
+    retries on its model and the response cache (see `harden_agent`).
     """
     light, heavy = models or load_models()
     branches = ParallelAgent(
@@ -108,12 +121,18 @@ def build_pipeline(
             for index in range(MAX_SUB_QUESTIONS)
         ],
     )
-    writer = create_writer_agent(heavy, notes_keys=notes_keys(), optional_notes=True)
+    writer = harden_agent(
+        create_writer_agent(heavy, notes_keys=notes_keys(), optional_notes=True)
+    )
 
     steps = []
     if cfg.use_planner and planner is not None:
-        steps.append(_with_deadline_callback(planner, PLANNER_MIN_LEFT_S, _planner_skip_text))
+        steps.append(_with_deadline_callback(
+                harden_agent(planner), PLANNER_MIN_LEFT_S, _planner_skip_text
+            ))
     steps += [branches, writer]
     if cfg.use_critic and critic is not None:
-        steps.append(_with_deadline_callback(critic, CRITIC_MIN_LEFT_S, _CRITIC_SKIP_TEXT))
+        steps.append(_with_deadline_callback(
+                harden_agent(critic), CRITIC_MIN_LEFT_S, _CRITIC_SKIP_TEXT
+            ))
     return SequentialAgent(name="research_pipeline", sub_agents=steps)
