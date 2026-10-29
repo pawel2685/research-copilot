@@ -61,9 +61,9 @@ is `None`, so they are testable without `.env`.
 ### Not verified yet
 
 The `{search_results}` and `{reading_notes}` placeholders rely on ADK filling the
-instruction from session state. This is checked in A6 with a manual run. If it does not
-work, the data has to be passed in another way. The manual check with a real API call
-is also still to do.
+instruction from session state. This was checked in A6 and works (see the findings in
+[a6-orchestration.md](a6-orchestration.md)). The A6 stage also added keyword options to
+the three factories. The manual check with a real API call is still to do.
 
 ### `tests/test_config.py` (new)
 

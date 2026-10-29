@@ -25,7 +25,7 @@ evaluation tooling (C).
 | A3 | [Baseline pipeline](a3-baseline-pipeline.md) | done | A2 |
 | A4 | [Time budget and skipping](a4-time-budget.md) | done | A3 |
 | A5 | [ADK agents](a5-adk-agents.md) | done | A3 |
-| A6 | [ADK orchestration](a6-orchestration.md) | to do | A4, A5 |
+| A6 | [ADK orchestration](a6-orchestration.md) | done | A4, A5 |
 | A7 | [Integration with B and C](a7-integration.md) | to do | A6 |
 | A8 | [Cache and retries](a8-cache-and-retries.md) | to do | A6 |
 | A9 | [Evaluation hand-off](a9-evaluation-handoff.md) | to do | A7, A8 |

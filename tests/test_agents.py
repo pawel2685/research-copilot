@@ -57,3 +57,35 @@ def test_missing_environment_raises_without_an_explicit_model(monkeypatch):
     monkeypatch.delenv("MODEL_HEAVY", raising=False)
     with pytest.raises(RuntimeError, match="MODEL_LIGHT"):
         create_reader_agent()
+
+
+def test_searcher_can_get_its_own_name_output_key_and_question_key():
+    agent = create_searcher_agent(
+        _tool(), "m", name="searcher_2", output_key="search_results_2", question_key="sub_question_2"
+    )
+    assert (agent.name, agent.output_key) == ("searcher_2", "search_results_2")
+    assert "{sub_question_2}" in agent.instruction
+
+
+def test_searcher_without_question_key_has_no_placeholder():
+    assert "{" not in create_searcher_agent(_tool(), "m").instruction
+
+
+def test_reader_can_get_its_own_name_and_keys():
+    agent = create_reader_agent("m", name="reader_3", input_key="search_results_3", output_key="reading_notes_3")
+    assert (agent.name, agent.output_key) == ("reader_3", "reading_notes_3")
+    assert "{search_results_3}" in agent.instruction
+    assert "{search_results}" not in agent.instruction
+
+
+def test_writer_reads_several_optional_notes():
+    agent = create_writer_agent("m", notes_keys=["a", "b"], optional_notes=True)
+    assert "{a?}" in agent.instruction and "{b?}" in agent.instruction
+    assert "{draft_report}" not in agent.instruction
+
+
+def test_revision_writer_gets_the_draft_and_the_corrections():
+    agent = create_writer_agent("m", revision=True)
+    assert "{draft_report}" in agent.instruction
+    assert "{revision_instructions}" in agent.instruction
+    assert "{reading_notes}" in agent.instruction

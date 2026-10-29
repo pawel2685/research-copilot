@@ -11,18 +11,25 @@ You are the Reader in a research assistant system.
 Summarise the passages below as short factual notes. Every note ends with the paper_id
 it comes from in square brackets, for example [2005.11401]. Use only the given
 passages. If there are no passages, say so.
-
-Passages:
-{search_results}
 """
 
 
-def create_reader_agent(model: str | None = None) -> LlmAgent:
-    """Create the Reader without making an API request."""
+def create_reader_agent(
+    model: str | None = None,
+    *,
+    name: str = "reader",
+    input_key: str = "search_results",
+    output_key: str = "reading_notes",
+) -> LlmAgent:
+    """Create the Reader without making an API request.
+
+    The passages are read from the session state key `input_key`.
+    """
+    instruction = f"{READER_INSTRUCTION}\nPassages:\n{{{input_key}}}\n"
     return LlmAgent(
-        name="reader",
+        name=name,
         model=model or load_models()[0],
         description="Summarises the passages as short notes with paper ids.",
-        instruction=READER_INSTRUCTION,
-        output_key="reading_notes",
+        instruction=instruction,
+        output_key=output_key,
     )
