@@ -15,6 +15,7 @@ from agents.config import load_models
 from agents.critic import CriticResult, critic_skipped_result
 from agents.orchestrator import build_pipeline, harden_agent, notes_keys
 from agents.skipping import is_verified, normalize_sub_questions
+from agents.stats import RecordingSearch, UsageCounter
 from agents.tools import make_search_tool
 from agents.writer import create_writer_agent
 from contracts import RunConfig, SearchFn
@@ -35,6 +36,11 @@ class PipelineResult:
     # version was not checked.
     revised: bool = False
     state: dict[str, Any] = field(default_factory=dict)
+    # Measurements for the evaluation (see agents/stats.py).
+    retrieved_source_ids: tuple[str, ...] = ()
+    llm_calls: int = 0
+    input_tokens: int = 0
+    output_tokens: int = 0
 
     @property
     def verified(self) -> bool:
@@ -42,8 +48,13 @@ class PipelineResult:
         return is_verified(self.critic_result) and not self.revised
 
 
-async def _run_agent(agent: BaseAgent, question: str, state: dict[str, Any]) -> dict:
-    """Run `agent` once in a new session and return the final session state."""
+async def _run_agent(
+    agent: BaseAgent, question: str, state: dict[str, Any], usage: UsageCounter
+) -> dict:
+    """Run `agent` once in a new session and return the final session state.
+
+    The model usage of the events is added to `usage`.
+    """
     session_service = InMemorySessionService()
     session_id = uuid.uuid4().hex
     await session_service.create_session(
@@ -51,10 +62,10 @@ async def _run_agent(agent: BaseAgent, question: str, state: dict[str, Any]) -> 
     )
     runner = Runner(app_name=APP_NAME, agent=agent, session_service=session_service)
     message = types.Content(role="user", parts=[types.Part(text=question)])
-    async for _ in runner.run_async(
+    async for event in runner.run_async(
         user_id=USER_ID, session_id=session_id, new_message=message
     ):
-        pass
+        usage.add(event)
     session = await session_service.get_session(
         app_name=APP_NAME, user_id=USER_ID, session_id=session_id
     )
@@ -85,8 +96,10 @@ async def run_pipeline(
     cfg = cfg or RunConfig()
     models = models or load_models()
     deadline_at = time.time() + cfg.time_budget_s
+    usage = UsageCounter()
+    recorder = RecordingSearch(search_fn)
     search_tool = make_search_tool(
-        search_fn, hybrid=cfg.hybrid, budget_words=cfg.compress_budget_words
+        recorder, hybrid=cfg.hybrid, budget_words=cfg.compress_budget_words
     )
     pipeline = build_pipeline(
         cfg, search_tool=search_tool, planner=planner, critic=critic, models=models
@@ -96,6 +109,7 @@ async def run_pipeline(
         pipeline,
         question,
         {"deadline_at": deadline_at, "question": question, "sub_questions": [question]},
+        usage,
     )
 
     report_markdown = str(state.get("report_markdown") or "")
@@ -120,7 +134,7 @@ async def run_pipeline(
                 f"- {text}" for text in critic_result.revision_instructions
             ),
         }
-        new_state = await _run_agent(writer, question, revision_state)
+        new_state = await _run_agent(writer, question, revision_state, usage)
         new_markdown = str(new_state.get("report_markdown") or "")
         if new_markdown:
             report_markdown, revised = new_markdown, True
@@ -131,4 +145,8 @@ async def run_pipeline(
         critic_result=critic_result,
         revised=revised,
         state=state,
+        retrieved_source_ids=tuple(recorder.source_ids),
+        llm_calls=usage.llm_calls,
+        input_tokens=usage.input_tokens,
+        output_tokens=usage.output_tokens,
     )

@@ -106,4 +106,6 @@ These were checked by inspecting the package in the project `.venv`:
 
 Not checked yet. Verify with a small manual run before relying on it:
 
-- The shape of `Event.usage_metadata` (needed in A9 for the token counts).
+- Real Gemini usage numbers. Checked in A9 in the installed ADK and with a fake model:
+  `Event.usage_metadata` has `prompt_token_count`, `candidates_token_count` and
+  `thoughts_token_count`, once per model response.
