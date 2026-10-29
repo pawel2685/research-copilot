@@ -218,3 +218,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Cache of model responses (agents/cache.py)
+.cache/
+.adk/

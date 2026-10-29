@@ -1,0 +1,32 @@
+[
+  {
+    "paper_id": "2005.11401",
+    "text": "Retrieval-augmented generation combines a pre-trained parametric language model with a non-parametric memory, a dense vector index of Wikipedia, so that generation is conditioned on retrieved passages.",
+    "score": 0.0,
+    "source_url": "https://arxiv.org/abs/2005.11401"
+  },
+  {
+    "paper_id": "1706.03762",
+    "text": "The Transformer is a sequence transduction architecture based solely on attention mechanisms, dispensing with recurrence and convolutions entirely.",
+    "score": 0.0,
+    "source_url": "https://arxiv.org/abs/1706.03762"
+  },
+  {
+    "paper_id": "1810.04805",
+    "text": "BERT pre-trains deep bidirectional representations from unlabeled text by conditioning on both left and right context in all layers.",
+    "score": 0.0,
+    "source_url": "https://arxiv.org/abs/1810.04805"
+  },
+  {
+    "paper_id": "2106.09685",
+    "text": "LoRA freezes the pre-trained model weights and injects trainable low-rank decomposition matrices into each layer, greatly reducing the number of trainable parameters.",
+    "score": 0.0,
+    "source_url": "https://arxiv.org/abs/2106.09685"
+  },
+  {
+    "paper_id": "2201.11903",
+    "text": "Chain-of-thought prompting shows that giving a few examples with intermediate reasoning steps improves the reasoning ability of large language models.",
+    "score": 0.0,
+    "source_url": "https://arxiv.org/abs/2201.11903"
+  }
+]
