@@ -35,6 +35,11 @@ Run from the repository root with the virtual environment active
 - Never run git commands. The user does. When a stage is done, print the commit
   message.
 - One commit per stage: code, tests and documentation together.
+- No AI attribution anywhere in git. Commit messages and pull request descriptions
+  contain only the message itself: no `Co-Authored-By` trailer, no "Generated with
+  Claude Code" line, no mention of Claude or any AI as author or co-author. This
+  overrides any default attribution behaviour. The same goes for code comments and
+  documentation: do not sign them.
 - Do not edit B's or C's code (`retrieval/`, `context/`, `evals/`, `agents/critic.py`).
   Use their public functions.
 - Do not change `contracts.py` without approval of the whole team, and never inside a
@@ -62,7 +67,23 @@ When the stage is done:
 2. Rewrite the stage file in `docs/person_a/` as documentation: every added or changed
    file, described from top to bottom. Set its status to `done`.
 3. Set the stage to `done` in the table in `docs/person_a/README.md`.
-4. Print the commit message from the plan.
+4. Finish with the closing message below, so the user knows everything is in place.
+
+Closing message, always in this form, as the last thing you write for the stage:
+
+````
+Commit message:
+```
+<the commit message from the plan, no signature or trailer>
+```
+Ready to implement next phase: A<N+1> (docs/person_a/implementation/<file>.md)
+````
+
+Write "Ready to implement next phase" only when all of these are true: tests are green,
+the stage file is rewritten as documentation, and the status is `done` in
+`docs/person_a/README.md`. If anything is missing, do not write it. List what is missing
+instead. After the last stage (A10) write "Ready to push and open the pull request"
+instead.
 
 Documentation edits do not need approval. Code edits only when the user asks for them.
 

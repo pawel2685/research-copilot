@@ -22,7 +22,7 @@ evaluation tooling (C).
 | A0 | [Setup](a0-setup.md) | done | nothing |
 | A1 | [Contracts](a1-contracts.md) | done | A0 |
 | A2 | [Stubs](a2-stubs.md) | done | A1 |
-| A3 | [Baseline pipeline](a3-baseline-pipeline.md) | to do | A2 |
+| A3 | [Baseline pipeline](a3-baseline-pipeline.md) | done | A2 |
 | A4 | [Time budget and skipping](a4-time-budget.md) | to do | A3 |
 | A5 | [ADK agents](a5-adk-agents.md) | to do | A3 |
 | A6 | [ADK orchestration](a6-orchestration.md) | to do | A4, A5 |

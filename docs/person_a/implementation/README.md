@@ -30,6 +30,9 @@ depends on are done (see the table below).
   stage commit. If a stage needs a contract change, stop and ask.
 - Never commit secrets. Keys live only in the local `.env`.
 - The assistant never runs git commands. The user does.
+- No AI attribution in git: no `Co-Authored-By` trailer, no "Generated with Claude Code"
+  line and no mention of an AI in commit messages or pull request descriptions. A commit
+  message is only the line from the plan.
 
 ## When a stage is finished
 
@@ -39,8 +42,22 @@ depends on are done (see the table below).
    bottom, in the same style as `a0-setup.md` and `a1-contracts.md`. Set its status
    to `done`.
 3. Set the stage to `done` in the table in `docs/person_a/README.md`.
-4. Print the commit message from the plan, for the user to commit. One commit per
-   stage, containing the code, the tests and the documentation.
+4. Finish with the closing message, so the user knows everything is in place. One
+   commit per stage, containing the code, the tests and the documentation. The closing
+   message is always in this form:
+
+   ````
+   Commit message:
+   ```
+   <the commit message from the plan, no signature or trailer>
+   ```
+   Ready to implement next phase: A<N+1> (docs/person_a/implementation/<file>.md)
+   ````
+
+   Write "Ready to implement next phase" only when the tests are green, the stage file
+   is rewritten as documentation and the status is `done` in `docs/person_a/README.md`.
+   If anything is missing, list what is missing instead. After A10 write "Ready to push
+   and open the pull request".
 
 Push and the pull request happen once, after the last stage.
 
