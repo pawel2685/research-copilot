@@ -1,4 +1,6 @@
-from agents.baseline import NO_SOURCES_MESSAGE, answer, build_report
+from agents.baseline import NO_SOURCES_MESSAGE, answer, build_report, merge_chunks
+from agents.critic import CriticResult
+from agents.deadline import Deadline
 from contracts import Chunk, Report, RunConfig
 
 
@@ -98,3 +100,87 @@ def test_default_config_is_used_when_none_is_given():
 def test_works_with_the_default_stub():
     report = answer("low-rank matrices")
     assert "2106.09685" in report.sources
+
+
+def _fail_planner(question):
+    raise AssertionError("planner must not be called")
+
+
+def _fail_critic(report, chunks):
+    raise AssertionError("critic must not be called")
+
+
+def test_tiny_time_budget_skips_both_agents_and_still_returns_a_report():
+    search_fn = _fake_search([_chunk("1", "alpha beta")])
+    report = answer(
+        "q",
+        RunConfig(time_budget_s=0.0),
+        search_fn=search_fn,
+        planner_fn=_fail_planner,
+        critic_fn=_fail_critic,
+    )
+    assert isinstance(report, Report)
+    assert report.sources == ["1"]
+    assert report.verified is False
+    assert [call["query"] for call in search_fn.calls] == ["q"]
+
+
+def test_given_deadline_is_used_instead_of_the_config_budget():
+    deadline = Deadline.after(0.0)
+    report = answer(
+        "q",
+        RunConfig(time_budget_s=1000.0),
+        search_fn=_fake_search([_chunk("1", "alpha")]),
+        critic_fn=_fail_critic,
+        deadline=deadline,
+    )
+    assert report.verified is False
+
+
+def test_planner_sub_questions_are_all_searched_and_duplicates_removed():
+    def search_fn(query, k=8, hybrid=True):
+        calls.append(query)
+        return [_chunk("shared", "same text"), _chunk(query, f"text of {query}")]
+
+    calls = []
+    report = answer(
+        "q",
+        RunConfig(),
+        search_fn=search_fn,
+        planner_fn=lambda q: ["a", "b"],
+    )
+    assert calls == ["a", "b"]
+    assert report.sources == ["shared", "a", "b"]
+    assert report.markdown.count("same text") == 1
+
+
+def test_approving_critic_gives_verified_true():
+    seen = []
+
+    def critic_fn(report, chunks):
+        seen.append((report, chunks))
+        return CriticResult(approved=True)
+
+    report = answer(
+        "q", RunConfig(), search_fn=_fake_search([_chunk("1", "alpha")]), critic_fn=critic_fn
+    )
+    assert report.verified is True
+    assert seen[0][0].sources == ["1"]
+    assert [chunk.paper_id for chunk in seen[0][1]] == ["1"]
+
+
+def test_rejecting_critic_gives_verified_false():
+    report = answer(
+        "q",
+        RunConfig(),
+        search_fn=_fake_search([_chunk("1", "alpha")]),
+        critic_fn=lambda report, chunks: CriticResult(approved=False),
+    )
+    assert report.verified is False
+
+
+def test_merge_chunks_keeps_the_highest_score_first_and_removes_duplicates():
+    low = Chunk(paper_id="1", text="same", score=1.0)
+    high = Chunk(paper_id="1", text="same", score=5.0)
+    other = Chunk(paper_id="2", text="other", score=3.0)
+    assert merge_chunks([[low, other], [high]]) == [high, other]
