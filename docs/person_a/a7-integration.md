@@ -1,7 +1,9 @@
 # A7: Integration with B and C
 
-Status: in progress. Everything that does not depend on B is done. B's search function
-and Planner are not in this branch yet (see "Still missing").
+Status: done (B stubbed). Everything that does not depend on B is done. B's search
+function and Planner are not in this branch yet, so the stub search and "no Planner"
+stand in for them. The checklist to finish this stage when B is merged is in "Waiting
+for B" in [README.md](README.md).
 
 Goal: the real modules replace the stand-ins, `answer()` is the one public entry point,
 and `python main.py "<question>"` answers a question.
@@ -70,9 +72,10 @@ The test of the old placeholder is replaced. New tests, with a fake `answer`:
 
 The three tests of the quality gate are unchanged.
 
-## Still missing
+## Still missing (placeholders)
 
-Needed from B, then this stage can be finished:
+Needed from B, to replace the placeholders (same list as "Waiting for B" in
+[README.md](README.md)):
 
 - B's search function in `retrieval/` (now only an empty `__init__.py`). Then set
   `default_search` in `agents/pipeline.py` to it.

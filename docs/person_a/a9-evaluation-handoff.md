@@ -17,6 +17,11 @@ C then runs the harness on the real pipeline, and A fixes what it finds.
 
 A7 and A8.
 
+**Open dependency on B.** A7 is done with B's search and Planner stubbed (see "Waiting
+for B" in [README.md](README.md)). Experiments run before that measure the stub, not
+the real retrieval, so they are only a test of the harness. Repeat them after B is
+integrated.
+
 ## Commit
 
 One commit when the stage is done:

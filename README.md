@@ -112,6 +112,10 @@ The app prints a short Markdown report with its sources, then `Verified: yes` or
 `Verified: no`. Without a question it prints a usage line and exits with a non-zero
 code. It needs `MODEL_LIGHT` and `MODEL_HEAVY` in the local `.env`.
 
+> **Status:** retrieval (B) is not integrated yet. The app searches five saved
+> passages from `stubs/` and runs without the Planner. See "Waiting for B" in
+> [docs/person_a/README.md](docs/person_a/README.md).
+
 Every start runs the whole test suite first. The app starts only if all tests pass
 and total coverage is at least 80% (`fail_under` in `pyproject.toml`). Otherwise it
 exits with code 1. To run only the tests and see the coverage report:

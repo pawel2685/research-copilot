@@ -14,6 +14,10 @@ Goal: a demo for the presentation and tidy documentation.
 
 A9.
 
+**Open dependency on B.** Before the final demo and the final README, finish the
+"Waiting for B" list in [README.md](README.md): real search, the Planner, and the
+manual check with a real key. Otherwise the demo runs on five stub passages.
+
 ## Commit
 
 One commit when the stage is done:
