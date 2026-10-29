@@ -21,15 +21,18 @@ evaluation tooling (C).
 |-------|------|--------|------------|
 | A0 | [Setup](a0-setup.md) | done | nothing |
 | A1 | [Contracts](a1-contracts.md) | done | A0 |
-| A2 | [Stubs](a2-stubs.md) | to do | A1 |
+| A2 | [Stubs](a2-stubs.md) | done | A1 |
 | A3 | [Baseline pipeline](a3-baseline-pipeline.md) | to do | A2 |
 | A4 | [Time budget and skipping](a4-time-budget.md) | to do | A3 |
-| A5 | [ADK agents](a5-adk-agents.md) | to do | A1 |
+| A5 | [ADK agents](a5-adk-agents.md) | to do | A3 |
 | A6 | [ADK orchestration](a6-orchestration.md) | to do | A4, A5 |
 | A7 | [Integration with B and C](a7-integration.md) | to do | A6 |
-| A8 | [Cache and retries](a8-cache-and-retries.md) | to do | A5 |
-| A9 | [Evaluation hand-off](a9-evaluation-handoff.md) | to do | A7 |
+| A8 | [Cache and retries](a8-cache-and-retries.md) | to do | A6 |
+| A9 | [Evaluation hand-off](a9-evaluation-handoff.md) | to do | A7, A8 |
 | A10 | [Demo and cleanup](a10-demo-and-cleanup.md) | to do | A9 |
+
+The instructions for building each stage are in
+[implementation/](implementation/README.md), one plan per stage.
 
 ## Branch and commits
 

@@ -8,6 +8,7 @@ Goal: the three core agents as real ADK agents.
 
 - `agents/config.py`: reads `MODEL_LIGHT` and `MODEL_HEAVY` from `.env` and fails
   with a clear message when one is missing.
+- `agents/tools.py`: the search tool for the Searcher, with compression inside.
 - `agents/searcher.py`: the Searcher (`LlmAgent`) with the `search` tool.
 - `agents/reader.py`: the Reader (`LlmAgent`) that summarises the compressed passages.
 - `agents/writer.py`: the Writer (`LlmAgent`) that writes the report with sources.
@@ -17,7 +18,7 @@ One real call is checked by hand. Automated tests make no real API calls.
 
 ## Depends on
 
-A1 and a working API key.
+A3 and a working API key.
 
 ## Commit
 

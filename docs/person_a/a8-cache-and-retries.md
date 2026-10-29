@@ -12,7 +12,7 @@ Goal: protect the free-tier limits and survive temporary errors.
 
 ## Depends on
 
-A5.
+A6.
 
 ## Commit
 

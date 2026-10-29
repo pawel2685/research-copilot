@@ -7,6 +7,8 @@ and C's real `compress()`. The evaluation harness can call it from day one.
 
 ## Planned files
 
+- `agents/passages.py`: `compress_chunks`, a helper that compresses `Chunk` objects
+  while keeping their ids and urls.
 - `agents/baseline.py`: `answer(question, cfg) -> Report`. Searches, compresses the
   passages to `cfg.compress_budget_words`, writes a report from them and returns it.
 - `tests/test_baseline.py`: tests of the flow, including a run with compression off.

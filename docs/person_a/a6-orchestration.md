@@ -10,6 +10,7 @@ Goal: the agents run as one flow.
   Reader over the sub-questions, a `SequentialAgent` chains Planner, the parallel
   step, Writer and Critic. Planner (B) and Critic (C) are attached with the skip
   callbacks from A4. The Critic can send the report back to the Writer once.
+- `agents/runner.py`: runs the flow in an ADK session and returns the report.
 - `tests/test_orchestrator.py`: tests of the structure and of skipping.
 
 ## Depends on

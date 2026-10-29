@@ -151,6 +151,7 @@ research-copilot/
 ├── tests/         automated tests
 ├── docs/          project documentation
 ├── contracts.py   shared data types and function signatures
+├── CLAUDE.md      instructions for AI assistants working in this repo
 ├── .env.example   template for your local .env
 └── requirements.txt
 ```
