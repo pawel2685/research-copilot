@@ -5,7 +5,8 @@ Given a research question, it finds papers on arXiv, summarises them, checks its
 own claims and writes a short report with sources. Five agents work together, and
 two of them (Planner and Critic) are skipped when the time budget runs short.
 
-> Status: project setup. The agents are not implemented yet.
+> Retrieval: arXiv corpus, BM25, vector and hybrid search are implemented.
+> See [retrieval setup and usage](docs/RETRIEVAL.md). The main app remains a placeholder.
 
 ## Requirements
 
@@ -103,6 +104,10 @@ It should print `ok`. The client is stored in a variable (`c`) on purpose, see
 Troubleshooting.
 
 ## Running the app and tests
+
+For the retrieval chat demo, run `python run_web.py` and open
+http://127.0.0.1:8000. Select `research_demo`.
+See [ADK Web demo instructions](docs/ADK_WEB.md) for configuration and examples.
 
 ```bash
 python main.py
