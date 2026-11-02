@@ -21,22 +21,48 @@ def test_run_gate_returns_pytest_exit_code(monkeypatch):
     assert calls == [[sys.executable, "-m", "pytest"]]
 
 
-def test_main_starts_app_when_gate_passes(monkeypatch):
+def test_main_answers_the_question_when_gate_passes(monkeypatch):
+    asked = []
     monkeypatch.setattr(main, "run_gate", lambda: 0)
-    monkeypatch.setattr(main, "run_app", lambda: 42)
+    monkeypatch.setattr(main, "run_app", lambda argv: asked.append(argv) or 42)
+    monkeypatch.setattr(main, "launch_web", lambda: pytest.fail("no web without a question"))
 
-    assert main.main() == 42
+    assert main.main(["What", "is", "LoRA?"]) == 42
+    assert asked == [["What", "is", "LoRA?"]]
 
 
-def test_main_blocks_app_when_gate_fails(monkeypatch, capsys):
-    monkeypatch.setattr(main, "run_gate", lambda: 1)
+@pytest.mark.parametrize("argv", [[], [""], ["  "]])
+def test_main_starts_the_web_interface_without_a_question(monkeypatch, argv):
+    monkeypatch.setattr(main, "run_gate", lambda: 0)
+    monkeypatch.setattr(main, "launch_web", lambda: 7)
 
-    def run_app():
-        raise AssertionError("app must not start when the gate fails")
+    def run_app(argv):
+        raise AssertionError("no question to answer")
 
     monkeypatch.setattr(main, "run_app", run_app)
 
-    assert main.main() == 1
+    assert main.main(argv) == 7
+
+
+def test_main_reads_the_command_line_by_default(monkeypatch):
+    monkeypatch.setattr(main, "run_gate", lambda: 0)
+    monkeypatch.setattr(main, "run_app", lambda argv: argv)
+    monkeypatch.setattr(sys, "argv", ["main.py", "from argv"])
+
+    assert main.main() == ["from argv"]
+
+
+def test_main_blocks_the_app_when_gate_fails(monkeypatch, capsys):
+    monkeypatch.setattr(main, "run_gate", lambda: 1)
+
+    def refuse(*args):
+        raise AssertionError("nothing must start when the gate fails")
+
+    monkeypatch.setattr(main, "run_app", refuse)
+    monkeypatch.setattr(main, "launch_web", refuse)
+
+    assert main.main(["question"]) == 1
+    assert main.main([]) == 1
     assert "app was not started" in capsys.readouterr().out
 
 

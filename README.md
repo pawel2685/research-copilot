@@ -107,8 +107,12 @@ Troubleshooting.
 ### 6. Build the paper corpus
 
 The app searches a local corpus of arXiv papers. The corpus is not in git (`data/` is in
-`.gitignore`), so every team member builds it once. Without it, `python main.py`, the
-demos and the experiments stop with `No paper corpus at ...`.
+`.gitignore`), so every team member builds it once. Without it, `python main.py "<question>"`,
+the demos and the experiments stop with `No paper corpus at ...`.
+
+**You can skip this step if you start the web interface with `python main.py` (see
+"Running the app"): it builds the same corpus and the index by itself when they are
+missing.** Do it by hand when you only use the terminal, the experiments or `adk web demo`.
 
 The five papers behind the evaluation questions (`evals/questions.py`) must be in it,
 or the metrics cannot find the expected sources. This query fetches them. In Windows
@@ -146,14 +150,29 @@ For the retrieval chat demo, run `python run_web.py` and open
 http://127.0.0.1:8000. Select `research_demo`.
 See [ADK Web demo instructions](docs/ADK_WEB.md) for configuration and examples.
 
+`main.py` is the one entry point and has two modes. Both run the whole test suite first.
+
+**Web interface.** Run it without a question:
+
+```bash
+python main.py
+```
+
+It checks `.env` (`GOOGLE_API_KEY`, `MODEL_LIGHT`, `MODEL_HEAVY`), builds the paper
+corpus and the vector index when they are missing (step 6, it needs internet and the first
+index downloads the embedding model), then serves the interface. Open
+<http://127.0.0.1:8000>, choose `research_copilot` in the top left and type a question.
+Stop it with Ctrl+C. See "Demo in the browser" for what the interface shows.
+
+**Terminal.** Run it with a question:
+
 ```bash
 python main.py "What problem does retrieval-augmented generation address?"
 ```
 
 The app prints a short Markdown report with its sources, then `Verified: yes` or
-`Verified: no`. Without a question it prints a usage line and exits with a non-zero
-code. It needs `MODEL_LIGHT` and `MODEL_HEAVY` in the local `.env`, and the corpus from
-step 6.
+`Verified: no`. It needs `MODEL_LIGHT` and `MODEL_HEAVY` in the local `.env`, and the
+corpus from step 6.
 
 **Current state.** Search is real: it uses hybrid search over the corpus. The Planner
 (part B) is not implemented yet, so the app searches the original question as it is,
@@ -173,7 +192,8 @@ below the threshold and the app will not start.
 
 ## Demo in the browser
 
-The same pipeline can be tried in the ADK web interface. From the repository root, with
+The same pipeline can be tried in the ADK web interface. `python main.py` starts it for
+you. To start it without the test run and the corpus check, from the repository root, with
 the virtual environment active, your `.env` filled in and the corpus built (step 6):
 
 ```bash
@@ -258,6 +278,8 @@ research-copilot/
 ├── stubs/         stand-ins so the team can work in parallel
 ├── tests/         automated tests
 ├── docs/          contributing rules and the stage-by-stage documentation
+├── main.py        the entry point: web interface or one question in the terminal
+├── launcher.py    what `main.py` needs for the web interface: `.env` check, corpus, server
 ├── contracts.py   shared data types and function signatures
 ├── CLAUDE.md      instructions for AI assistants working in this repo
 ├── .env.example   template for your local .env

@@ -67,11 +67,38 @@ Python baseline and `run_pipeline` still work without a corpus.
   calls `answer(question)`, prints the Markdown report, an empty line and
   `Verified: yes` or `Verified: no`, and returns `0`. A `RuntimeError` (for example a
   model name missing in `.env`) is printed as `Error: ...` and returns `1`.
-- **`main()`.** Unchanged: the quality gate still runs first.
+- **`main(argv=None)`.** The quality gate still runs first. Then a question on the
+  command line goes to `run_app`, and no question (nothing, empty, blanks) starts the web
+  interface with `launch_web()`. So `python main.py` is the one entry point for both: the
+  interface in the browser, or one question in the terminal. `USAGE` mentions both.
+
+### `launcher.py` (new)
+
+Everything `python main.py` needs to start the web interface, so `main.py` stays short.
+
+- **Constants.** `ROOT`, `DATA_DIR` (`data/`, where B keeps the corpus), `HOST` and `PORT`
+  (`127.0.0.1:8000`), `AGENTS_DIR` (`demo`, the directory `adk web` serves).
+- **`CORPUS_QUERY`.** The arXiv query that fetches the five papers behind the evaluation
+  questions by title, the same one as in the README (step 6).
+- **`config_problems()`.** Loads `.env` and returns what is missing as messages:
+  `GOOGLE_API_KEY` (also the placeholder from `.env.example`), `MODEL_LIGHT` and
+  `MODEL_HEAVY`. An empty list means the configuration is complete. It does not check that
+  the key is valid or that the quota is left.
+- **`ensure_corpus(data_dir=DATA_DIR)`.** Runs B's CLI as a subprocess (`python -m
+  retrieval`), only for what is missing: `fetch` when `corpus.jsonl` is missing and
+  `index` when `chroma/` is missing. The query goes in as one argument of the argument
+  list, so it needs no shell quoting (the problem of Windows PowerShell 5.1 in the
+  README). B's code is used as it is, not edited. Returns `0` when both exist at the
+  end, `1` when a step failed.
+- **`launch_web()`.** Stops with the messages of `config_problems()` and a pointer to the
+  README when `.env` is incomplete, stops when the corpus cannot be prepared, otherwise
+  prints the address and serves `demo/` with `python -m google.adk.cli web --no-reload`.
+  Ctrl+C ends it cleanly (return code `0`).
 
 ### `README.md` (changed)
 
-The "Running the app and tests" section shows the new command with a question.
+The "Running the app and tests" section describes both modes of `python main.py`. Step 6
+(the corpus) says that the web mode builds it by itself.
 
 ### `tests/test_pipeline.py` (new)
 
@@ -109,16 +136,31 @@ encoder in place of the embedding model, so nothing is downloaded.
 - `test_demo.py`: the same for the demo test with the real ADK runner and a fake model,
   which builds its search tool from the stub.
 
+### `tests/test_launcher.py` (new)
+
+`subprocess.run` and `subprocess.call` are replaced by recorders, `.env` is not read, and
+nothing is downloaded.
+
+- `config_problems`: a complete `.env` has no problems, every missing setting is named,
+  the placeholder key counts as missing.
+- `ensure_corpus`: nothing runs when the corpus and the index exist, a missing corpus is
+  fetched and indexed (the query is one argument, with the data directory), only the
+  index is built when the corpus exists, a failed fetch stops before the index, a failed
+  index returns `1`.
+- The corpus query names all five evaluation papers (checked against
+  `evals/questions.py`).
+- `launch_web`: stops on a bad `.env` and on a corpus that cannot be prepared (the server
+  is not started), serves `demo` on `127.0.0.1:8000` with its return code, and Ctrl+C
+  ends cleanly. The `demo/research_copilot/agent.py` file that `adk web` looks for exists.
+
 ### `tests/test_main.py` (changed)
 
-The test of the old placeholder is replaced. New tests, with a fake `answer`:
-
-- The report is printed with `Verified: yes`, and with `Verified: no`.
-- The question is read from the command line.
-- No question (nothing, empty, blanks) prints the usage and returns non-zero.
-- A `RuntimeError` from `answer` is printed and returns `1`.
-
-The three tests of the quality gate are unchanged.
+`main()` is tested with a question (goes to `run_app`), without one (starts the web
+interface, even for empty and blank arguments), with the command line by default, and
+with a failing gate (nothing starts). The tests of `run_app` are unchanged: a fake
+`answer`, `Verified: yes` and `no`, the question from the command line, no question
+(usage, non-zero), and a `RuntimeError` (printed, `1`). The three tests of the quality
+gate are unchanged.
 
 ## Still missing (placeholders)
 
