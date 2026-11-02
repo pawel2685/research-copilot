@@ -6,6 +6,7 @@ from agents import pipeline
 from agents.critic import CriticResult, critic_skipped_result
 from agents.runner import PipelineResult
 from contracts import Chunk, Report, RunConfig
+from stubs.search import search as stub_search
 from tests.fake_llm import FakeLlm
 
 
@@ -94,6 +95,12 @@ def test_answer_returns_a_report_and_passes_the_config_on(fake_run):
     assert call["planner"] is None
 
 
+def test_default_search_is_b_retrieval_through_the_adapter():
+    from agents import retrieval_search
+
+    assert pipeline.default_search is retrieval_search.search
+
+
 def test_answer_uses_the_default_config(fake_run):
     pipeline.answer("q")
     assert fake_run.calls[0]["cfg"] == RunConfig()
@@ -132,7 +139,9 @@ def test_answer_runs_the_whole_flow_with_a_fake_model(monkeypatch):
     monkeypatch.setattr(
         pipeline, "run_pipeline", functools.partial(pipeline.run_pipeline, models=(fake, fake))
     )
-    report = pipeline.answer("low-rank matrices", RunConfig(use_planner=False))
+    report = pipeline.answer(
+        "low-rank matrices", RunConfig(use_planner=False), search_fn=stub_search
+    )
     assert report.question == "low-rank matrices"
     assert "2106.09685" in report.markdown
     assert report.verified is True

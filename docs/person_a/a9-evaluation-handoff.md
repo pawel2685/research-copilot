@@ -1,14 +1,15 @@
 # A9: Evaluation hand-off
 
-Status: done (B stubbed). The code and tests are finished. Real experiment results need
-B's retrieval and Planner (see "Open dependency on B").
+Status: done (Planner stubbed). The code and tests are finished. Search is B's real
+retrieval now. Final results for E3 and E4 need B's Planner (see "Open dependency on B").
 
 Goal: C can run the experiments E0 to E4 on the pipeline and get the numbers the
 metrics need.
 
-**Open dependency on B.** A7 is done with B's search and Planner stubbed (see "Waiting
-for B" in [README.md](README.md)). Experiments run before that measure the stub, not
-the real retrieval, so they are only a test of the harness. Repeat them after B is
+**Open dependency on B.** `answer_with_stats` searches B's corpus now, so E0 to E2 run
+on the real retrieval (build the corpus first, and keep the same `corpus.jsonl` for all
+runs). The Planner is still missing (see "Waiting for B" in [README.md](README.md)), so
+E3 and E4 run without it and do not show its effect. Repeat them after B's Planner is
 integrated.
 
 ## For C: how to use it

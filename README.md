@@ -6,7 +6,8 @@ own claims and writes a short report with sources. Five agents work together, an
 two of them (Planner and Critic) are skipped when the time budget runs short.
 
 > Retrieval: arXiv corpus, BM25, vector and hybrid search are implemented.
-> See [retrieval setup and usage](docs/RETRIEVAL.md). The main app remains a placeholder.
+> See [retrieval setup and usage](docs/RETRIEVAL.md). `python main.py` searches this
+> corpus, so build it first (`python -m retrieval fetch ...`, then `index`).
 
 ## Requirements
 

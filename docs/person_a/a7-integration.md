@@ -1,9 +1,9 @@
 # A7: Integration with B and C
 
-Status: done (B stubbed). Everything that does not depend on B is done. B's search
-function and Planner are not in this branch yet, so the stub search and "no Planner"
-stand in for them. The checklist to finish this stage when B is merged is in "Waiting
-for B" in [README.md](README.md).
+Status: done (Planner stubbed). B's search is integrated: `answer` searches B's corpus
+through `agents/retrieval_search.py`. B's Planner does not exist yet, so "no Planner"
+stands in for it. The checklist for what is left is in "Waiting for B" in
+[README.md](README.md).
 
 Goal: the real modules replace the stand-ins, `answer()` is the one public entry point,
 and `python main.py "<question>"` answers a question.
@@ -14,9 +14,11 @@ and `python main.py "<question>"` answers a question.
 
 - **Module docstring.** Says that this is the public entry point, used by the
   evaluation harness and `main.py`.
-- **`default_search`.** The search function used when none is given. It is still the
-  stub from `stubs/search.py`, marked with a `TODO(B)` comment. This is the one line
-  to change when B's retrieval is merged.
+- **`default_search`.** The search function used when none is given. It is B's
+  retrieval through the adapter `agents/retrieval_search.py` (see below). It was the
+  stub from `stubs/search.py` until B's retrieval was merged. The app and the demo now
+  need the corpus built with `python -m retrieval`; tests pass a search function
+  explicitly and never touch the corpus.
 - **`cited_paper_ids(result)`.** The unique arXiv ids cited in the notes of the four
   branches (`reading_notes_1` to `reading_notes_4`), in order of appearance. An id is
   written in square brackets, as the Reader does (`[2005.11401]`). Other brackets such
@@ -53,7 +55,9 @@ returns dictionaries and takes `top_k` and `mode`. The pipeline expects
   `evals/experiment_configs.py`). The keyword-only `data_dir` is for tests and does not
   break the contract.
 
-It is not the default search of `answer` yet.
+It is the default search of `answer` and `answer_with_stats` (`agents/pipeline.py`).
+`agents/baseline.py` and `agents/runner.py` keep the stub as their default, so the plain
+Python baseline and `run_pipeline` still work without a corpus.
 
 ### `main.py` (changed)
 
@@ -97,6 +101,14 @@ encoder in place of the embedding model, so nothing is downloaded.
 - A missing corpus raises a `RuntimeError` that names `python -m retrieval fetch`.
 - The adapter fits `SearchFn`, and its default data directory is B's.
 
+### `tests/test_pipeline.py` and `tests/test_demo.py` (changed)
+
+- `test_pipeline.py`: a new test checks that `default_search` is the adapter of B's
+  retrieval. The test of the whole flow with a fake model now passes the stub search
+  explicitly, because the default needs a corpus on disk. The flow it checks is the same.
+- `test_demo.py`: the same for the demo test with the real ADK runner and a fake model,
+  which builds its search tool from the stub.
+
 ### `tests/test_main.py` (changed)
 
 The test of the old placeholder is replaced. New tests, with a fake `answer`:
@@ -110,20 +122,18 @@ The three tests of the quality gate are unchanged.
 
 ## Still missing (placeholders)
 
-Needed from B, to replace the placeholders (same list as "Waiting for B" in
-[README.md](README.md)):
+Left to do (same list as "Waiting for B" in [README.md](README.md)):
 
-- B's search function in `retrieval/` (now only an empty `__init__.py`). Then set
-  `default_search` in `agents/pipeline.py` to it.
 - B's Planner agent. Then pass it as the default `planner` in `answer`. Its output
   must match what `normalize_sub_questions` accepts (see the findings in
   [a6-orchestration.md](a6-orchestration.md)).
-- The manual check with a real key: `python main.py "What problem does
+- The manual check with a real key, after building the corpus (`python -m retrieval
+  fetch ...` and `python -m retrieval index`): `python main.py "What problem does
   retrieval-augmented generation address?"`, and compare the cited sources with
-  `evals/questions.py` (`2005.11401`).
+  `evals/questions.py` (`2005.11401`). The corpus query must include that paper.
 
-Until then the app runs end to end on the stub search with real Gemini calls, with the
-Critic from C.
+Until the Planner exists, the app runs end to end on B's search with real Gemini calls,
+with the Critic from C and without a Planner.
 
 ## Commit
 

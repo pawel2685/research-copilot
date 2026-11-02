@@ -26,7 +26,7 @@ evaluation tooling (C).
 | A4 | [Time budget and skipping](a4-time-budget.md) | done | A3 |
 | A5 | [ADK agents](a5-adk-agents.md) | done | A3 |
 | A6 | [ADK orchestration](a6-orchestration.md) | done | A4, A5 |
-| A7 | [Integration with B and C](a7-integration.md) | done (B stubbed) | A6 |
+| A7 | [Integration with B and C](a7-integration.md) | done (Planner stubbed) | A6 |
 | A8 | [Cache and retries](a8-cache-and-retries.md) | done | A6 |
 | A9 | [Evaluation hand-off](a9-evaluation-handoff.md) | done (B stubbed) | A7, A8 |
 | A10 | [Demo and cleanup](a10-demo-and-cleanup.md) | done (B stubbed) | A9 |
@@ -36,17 +36,18 @@ The instructions for building each stage are in
 
 ## Waiting for B
 
-A7 is done with B's parts stubbed, so the later stages can go on. When B's work is
-merged into `main` (the user pulls it into `feat/person-a`), do these and tick them
-off. Until then the app runs on the stub search without a Planner.
+B's search is integrated. The Planner is still missing, so the app runs without it. When
+B's Planner is merged into `main`, do the rest and tick it off.
 
-- [ ] Search: set `default_search` in `agents/pipeline.py` to B's function from
-      `retrieval/` (it must fit `SearchFn`). Replaces `stubs/search.py` as the default.
+- [x] Search: `default_search` in `agents/pipeline.py` is B's retrieval through the
+      adapter `agents/retrieval_search.py` (it fits `SearchFn`). The app needs the
+      corpus: `python -m retrieval fetch ...` and `python -m retrieval index`.
 - [ ] Planner: pass B's Planner agent as the default `planner` of `answer` in
       `agents/pipeline.py`. Check that its output matches `normalize_sub_questions`
       (a list of strings, a dict with a `questions` list, or a JSON string of either).
-- [ ] Tests: add a test that `answer` uses B's search by default, and one run with the
-      Planner. Keep the fake-model tests.
+- [ ] Tests: done for the search (`test_default_search_is_b_retrieval_through_the_adapter`
+      and `tests/test_retrieval_search.py`). Still to add: one run with the Planner. Keep
+      the fake-model tests.
 - [ ] Manual check with a real key: `python main.py "What problem does
       retrieval-augmented generation address?"`. The cited sources should include
       `2005.11401` (see `evals/questions.py`).
@@ -71,18 +72,18 @@ or changed, described from top to bottom.
 
 | Need | From | Status | Workaround until it is ready |
 |------|------|--------|------------------------------|
-| `search()` returning `Chunk` with arXiv ids | B | **missing**: `retrieval/` is empty | stub in `stubs/` (A2), used by `agents/pipeline.py` |
+| `search()` returning `Chunk` with arXiv ids | B | integrated | `retrieval/` is merged. `agents/retrieval_search.py` adapts it to `SearchFn`, and `agents/pipeline.py` uses it. The stub in `stubs/` stays for tests, `agents/baseline.py` and `agents/runner.py` |
 | Planner agent | B | **missing** | `planner=None`: the Planner is left out and the original question is searched |
 | `compress()` | C | integrated | already merged (`context/compression.py`) |
 | Critic agent | C | integrated | already merged (`agents/critic.py`), wired in `agents/pipeline.py` |
 
 What to do when the missing parts arrive is in "Waiting for B" above.
 
-**Effect on the later stages.** Until B's parts are integrated, anything measured or
-shown runs on the stub search (five fixed passages) and without a Planner. Results of
-A9 (the experiments E0 to E4) and the demo of A10 are not final then. The ablation of
-the Planner (E-configs with `use_planner`) and of hybrid search cannot show a real
-effect, because the stub ignores `hybrid` and there is no Planner.
+**Effect on the later stages.** Search is real now, so `hybrid` has an effect (E0 uses
+vector search only, the other experiments use hybrid search). Until B's Planner is
+integrated, anything measured or shown runs without a Planner. Results of A9 (the
+experiments E0 to E4) and the demo of A10 are not final then. The ablation of the
+Planner (E3 and E4, `use_planner`) cannot show a real effect.
 
 ## Decisions so far
 
