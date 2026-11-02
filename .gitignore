@@ -218,3 +218,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Downloaded arXiv corpus and persistent vector indexes
+data/
+.adk/
