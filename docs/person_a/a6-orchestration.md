@@ -206,7 +206,9 @@ Still to do by hand, because it needs the real API key:
 - The shape of the Planner output (`sub_questions`): a list of strings, or a dict with
   a `questions` list, or a JSON string of either. `normalize_sub_questions` accepts all
   of these, but B's Planner and the skip text above must agree. Confirm with B.
-- The thresholds `PLANNER_MIN_LEFT_S` and `CRITIC_MIN_LEFT_S` are still example values.
+- The threshold `CRITIC_MIN_LEFT_S` was checked with real runs (see
+  [a4-time-budget.md](a4-time-budget.md)). `PLANNER_MIN_LEFT_S` is still an example
+  value, because there is no Planner yet.
 
 ## Commit
 

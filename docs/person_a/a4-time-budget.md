@@ -23,8 +23,15 @@ it is testable without ADK. A6 reuses the same rules inside ADK.
 
 - **Module docstring.** Says that a skipped Planner means the original question is
   used, and a skipped Critic means the report stays unverified.
-- **`PLANNER_MIN_LEFT_S = 40.0` and `CRITIC_MIN_LEFT_S = 30.0`.** Example values for the
-  time each agent needs. To be tuned after the first real runs.
+- **`PLANNER_MIN_LEFT_S = 40.0` and `CRITIC_MIN_LEFT_S = 30.0`.** The time each agent
+  needs. `CRITIC_MIN_LEFT_S` was checked with real runs: six runs of the whole pipeline
+  on the question about RAG, with `LLM_CACHE=off`, three without and three with the
+  Critic. Without it a run took 16.0 to 22.5 s (mean 18.9 s), with it 16.2 to 42.3 s
+  (mean 28.0 s). The Critic added 9 s on average and up to about 26 s (the slowest run
+  with it minus the fastest without), so 30 s is kept. Three runs are few and the
+  model latency varies, so repeat the measurement if the model or the prompts change.
+  `PLANNER_MIN_LEFT_S` is still an example value, because there is no Planner to
+  measure.
 - **`PlannerFn` and `CriticFn`.** Type aliases for the Planner function
   (`str -> list[str]`) and the Critic function (`Report, list[Chunk] -> CriticResult`).
   They live here, not in `contracts.py`.

@@ -54,9 +54,10 @@ B's Planner is merged into `main`, do the rest and tick it off.
       Critic's output schema class could not be hashed), now fixed and tested.
 - [ ] Docs: update `a7-integration.md` and set its status to `done`.
 
-Other open items that need the real API key: the manual run from
-[a6-orchestration.md](a6-orchestration.md) and the example thresholds
-`PLANNER_MIN_LEFT_S` and `CRITIC_MIN_LEFT_S`.
+Other open items: `PLANNER_MIN_LEFT_S` is still an example value and needs a measurement
+once the Planner exists. `CRITIC_MIN_LEFT_S` was measured (see
+[a4-time-budget.md](a4-time-budget.md)). The manual run from
+[a6-orchestration.md](a6-orchestration.md) is covered by the run of `main.py` above.
 
 ## Branch and commits
 
