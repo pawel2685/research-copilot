@@ -32,6 +32,29 @@ and `python main.py "<question>"` answers a question.
   `None` for now, which means the Planner is left out and the original question is
   searched.
 
+### `agents/retrieval_search.py` (new, added when B's retrieval was merged)
+
+The adapter that makes B's retrieval fit `SearchFn`. B's `retrieval.Retriever.search`
+returns dictionaries and takes `top_k` and `mode`. The pipeline expects
+`search(query, k, hybrid) -> list[Chunk]`. B's code is not changed.
+
+- **`_retriever(data_dir)`.** Loads `corpus.jsonl` from the data directory and builds one
+  `Retriever` per directory (cached, because building the BM25 index is slow). When the
+  corpus does not exist it raises a `RuntimeError` that names the commands that build it
+  (`python -m retrieval fetch ...` and `python -m retrieval index`). `main.py` already
+  prints a `RuntimeError` as `Error: ...`.
+- **`to_chunk(item)`.** Converts one result into a `Chunk`: `arxiv_id` becomes
+  `paper_id` without the version suffix (`2005.11401v4` becomes `2005.11401`, because the
+  evaluation metrics compare plain ids), `text` and `url` are copied, `score` becomes a
+  float.
+- **`search(query, k=8, hybrid=True, *, data_dir=DEFAULT_DATA)`.** The `SearchFn`.
+  `hybrid=True` uses B's `"hybrid"` mode (BM25 and vector search fused). `hybrid=False`
+  uses `"vector"`, which is the baseline E0 (vector search only, see
+  `evals/experiment_configs.py`). The keyword-only `data_dir` is for tests and does not
+  break the contract.
+
+It is not the default search of `answer` yet.
+
 ### `main.py` (changed)
 
 - **Module docstring and `USAGE`.** The command is now `python main.py "<question>"`.
@@ -60,6 +83,19 @@ The "Running the app and tests" section shows the new command with a question.
 - Two runs of the whole flow on the real ADK runner with `FakeLlm`: an approving Critic
   gives a verified report, and a tiny time budget skips the Critic and gives an
   unverified report.
+
+### `tests/test_retrieval_search.py` (new)
+
+Uses a real `Retriever` on a two-paper corpus in `tmp_path`, with a deterministic
+encoder in place of the embedding model, so nothing is downloaded.
+
+- `to_chunk`: maps the fields, drops the version, keeps an id without one.
+- `search`: returns `Chunk`s with plain arXiv ids, `k` limits the results, a blank query
+  returns an empty list.
+- `hybrid` selects the `"hybrid"` or `"vector"` mode (fake retriever records the mode).
+- The corpus is loaded once per directory.
+- A missing corpus raises a `RuntimeError` that names `python -m retrieval fetch`.
+- The adapter fits `SearchFn`, and its default data directory is B's.
 
 ### `tests/test_main.py` (changed)
 
