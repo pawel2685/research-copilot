@@ -4,3 +4,7 @@ pytest
 python-dotenv
 pytest-cov
 matplotlib>=3.9,<4
+arxiv>=2.2,<3
+rank-bm25>=0.2.2,<0.3
+chromadb>=1.0,<2
+sentence-transformers>=3,<6

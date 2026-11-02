@@ -219,6 +219,6 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# Cache of model responses (agents/cache.py)
-.cache/
+# Downloaded arXiv corpus and persistent vector indexes
+data/
 .adk/
