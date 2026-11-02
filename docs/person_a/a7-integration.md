@@ -127,10 +127,16 @@ Left to do (same list as "Waiting for B" in [README.md](README.md)):
 - B's Planner agent. Then pass it as the default `planner` in `answer`. Its output
   must match what `normalize_sub_questions` accepts (see the findings in
   [a6-orchestration.md](a6-orchestration.md)).
-- The manual check with a real key, after building the corpus (`python -m retrieval
-  fetch ...` and `python -m retrieval index`): `python main.py "What problem does
-  retrieval-augmented generation address?"`, and compare the cited sources with
-  `evals/questions.py` (`2005.11401`). The corpus query must include that paper.
+
+## Manual check (done)
+
+With a corpus of 41 papers built from title queries of the five evaluation papers
+(`python -m retrieval fetch ...`, then `index`), `python main.py "What problem does
+retrieval-augmented generation address?"` printed a report with three claims, all cited
+`[2005.11401]`, and `Verified: yes`. The whole run, including the test suite that the
+app runs first, took 33 s. The run found a bug in `agents/cache.py`: the cache key
+could not be built for the Critic, because its output schema is a class in the request
+config. It is fixed (see [a8-cache-and-retries.md](a8-cache-and-retries.md)).
 
 Until the Planner exists, the app runs end to end on B's search with real Gemini calls,
 with the Critic from C and without a Planner.

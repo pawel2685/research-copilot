@@ -48,9 +48,10 @@ B's Planner is merged into `main`, do the rest and tick it off.
 - [ ] Tests: done for the search (`test_default_search_is_b_retrieval_through_the_adapter`
       and `tests/test_retrieval_search.py`). Still to add: one run with the Planner. Keep
       the fake-model tests.
-- [ ] Manual check with a real key: `python main.py "What problem does
-      retrieval-augmented generation address?"`. The cited sources should include
-      `2005.11401` (see `evals/questions.py`).
+- [x] Manual check with a real key: `python main.py "What problem does
+      retrieval-augmented generation address?"` gave a report citing `2005.11401` and
+      `Verified: yes`, without a Planner. It also found a bug in `agents/cache.py` (the
+      Critic's output schema class could not be hashed), now fixed and tested.
 - [ ] Docs: update `a7-integration.md` and set its status to `done`.
 
 Other open items that need the real API key: the manual run from
