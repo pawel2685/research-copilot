@@ -9,6 +9,7 @@ from google.adk.agents import SequentialAgent
 from google.genai import types
 
 from contracts import RunConfig
+from stubs.search import search as stub_search
 
 
 @pytest.fixture
@@ -96,7 +97,7 @@ def test_the_demo_pipeline_runs_on_the_real_adk_runner_with_a_fake_model(demo, m
     # Same agents as the demo, but with the fake model instead of the dummy names.
     pipeline = demo.build_pipeline(
         RunConfig(),
-        search_tool=demo.make_search_tool(demo.default_search),
+        search_tool=demo.make_search_tool(stub_search),
         critic=demo.create_critic_agent(fake),
         models=(fake, fake),
     )

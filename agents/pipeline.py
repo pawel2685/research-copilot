@@ -19,9 +19,9 @@ from agents.runner import PipelineResult, run_pipeline
 from agents.stats import RunStats
 from contracts import Report, RunConfig, SearchFn
 
-# TODO(B): replace the stub with B's search function from `retrieval/` once it is
-# merged, and pass B's Planner agent as the default `planner` of `answer`.
-from stubs.search import search as default_search
+# B's retrieval, through the adapter. It needs the corpus built by `python -m retrieval`.
+# TODO(B): pass B's Planner agent as the default `planner` of `answer` once it is merged.
+from agents.retrieval_search import search as default_search
 
 logger = logging.getLogger(__name__)
 

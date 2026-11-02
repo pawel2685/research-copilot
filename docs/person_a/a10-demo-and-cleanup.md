@@ -6,8 +6,9 @@ Goal: a demo for the presentation and tidy documentation, so a new team member c
 follow the README and run everything.
 
 **Open dependency on B.** Before the final demo and the final README, finish the
-"Waiting for B" list in [README.md](README.md): real search, the Planner, and the
-manual check with a real key. Otherwise the demo runs on five stub passages.
+"Waiting for B" list in [README.md](README.md): the Planner and the manual check with a
+real key. The search is real now (it needs the corpus); without the Planner the demo
+searches the original question.
 
 ## Files
 
@@ -33,7 +34,8 @@ Read top to bottom:
   four branches. It runs at every message, so a second question in the same chat starts
   clean and does not reuse the old notes or the old deadline.
 - **`build_demo_pipeline(cfg=None)`.** Builds the pipeline with `build_pipeline`: the
-  search tool from the default search (the stub, `TODO(B)`), no Planner yet (`TODO(B)`),
+  search tool from the default search (B's retrieval, so the demo needs the corpus), no
+  Planner yet (`TODO(B)`),
   and C's Critic when `cfg.use_critic` is on. Adds the start callback.
 - **`root_agent`.** `build_demo_pipeline()` with the default `RunConfig()`. The agents
   have the retries and the cache like everywhere else, so repeating a question in the

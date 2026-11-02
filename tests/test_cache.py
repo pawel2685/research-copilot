@@ -76,6 +76,58 @@ def test_tools_and_output_schema_are_part_of_the_key():
     assert len({cache.cache_key(r) for r in (plain, with_tool, with_schema)}) == 3
 
 
+def test_a_pydantic_output_schema_class_can_be_hashed():
+    """ADK puts the output schema class of an agent (the Critic's) in the config."""
+    from agents.critic import CriticResult
+    from pydantic import BaseModel
+
+    class Other(BaseModel):
+        answer: str
+
+    request = _request()
+    request.config.response_schema = CriticResult
+    key = cache.cache_key(request)
+    assert cache.cache_key(request) == key
+    other = _request()
+    other.config.response_schema = Other
+    assert cache.cache_key(other) != key
+    assert cache.cache_key(_request()) != key
+
+
+def test_enums_and_unknown_objects_in_the_config_can_be_hashed():
+    from enum import Enum
+
+    class Color(Enum):
+        RED = "red"
+
+    assert cache._json_default(Color.RED) == "red"
+    assert cache._json_default(object).startswith("<class")
+    request = _request()
+    request.config.tools = [
+        types.Tool(
+            function_declarations=[
+                types.FunctionDeclaration(
+                    name="f",
+                    parameters=types.Schema(
+                        type=types.Type.OBJECT,
+                        properties={"q": types.Schema(type=types.Type.STRING)},
+                    ),
+                )
+            ]
+        )
+    ]
+    assert cache.cache_key(request) == cache.cache_key(request)
+
+
+def test_a_request_with_an_output_schema_class_is_stored_and_hit():
+    from agents.critic import CriticResult
+
+    request = _request()
+    request.config.response_schema = CriticResult
+    _miss_then_store(request, _response("stored answer"))
+    assert cache.before_model(_ctx(), request).content.parts[0].text == "stored answer"
+
+
 def test_a_different_prompt_is_a_miss():
     _miss_then_store(_request("a"), _response())
     assert cache.before_model(_ctx(), _request("b")) is None

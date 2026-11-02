@@ -16,6 +16,7 @@ import hashlib
 import json
 import os
 from collections.abc import Sequence
+from enum import Enum
 from pathlib import Path
 from typing import Any
 
@@ -23,6 +24,7 @@ from google.adk.agents import LlmAgent
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.models.llm_request import LlmRequest
 from google.adk.models.llm_response import LlmResponse
+from pydantic import BaseModel
 
 DEFAULT_CACHE_DIR = ".cache/llm"
 
@@ -39,6 +41,19 @@ def cache_dir() -> Path:
     return Path(os.getenv("LLM_CACHE_DIR") or DEFAULT_CACHE_DIR)
 
 
+def _json_default(value: Any) -> Any:
+    """Make what `json.dumps` cannot handle part of the key.
+
+    The output schema of an agent (the Critic's `CriticResult`) is a class in the config.
+    It goes into the key as its JSON schema, so a changed schema is a different key.
+    """
+    if isinstance(value, type) and issubclass(value, BaseModel):
+        return value.model_json_schema()
+    if isinstance(value, Enum):
+        return value.value
+    return str(value)
+
+
 def cache_key(llm_request: LlmRequest) -> str:
     """SHA-256 of the model name and everything that goes into the request.
 
@@ -51,9 +66,12 @@ def cache_key(llm_request: LlmRequest) -> str:
             content.model_dump(mode="json", exclude_none=True)
             for content in llm_request.contents
         ],
-        "config": llm_request.config.model_dump(mode="json", exclude_none=True),
+        # Python mode keeps the output schema class, which JSON mode cannot serialize.
+        "config": llm_request.config.model_dump(mode="python", exclude_none=True),
     }
-    text = json.dumps(payload, sort_keys=True, ensure_ascii=False, default=str)
+    text = json.dumps(
+        payload, sort_keys=True, ensure_ascii=False, default=_json_default
+    )
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 

@@ -44,7 +44,14 @@ Checked in the installed packages:
 - **Switches.** `LLM_CACHE=off` disables reading and writing (read at every call, on
   by default). `LLM_CACHE_DIR` sets the directory, `.cache/llm` by default.
 - **`cache_key(llm_request)`.** The SHA-256 of the model name, the contents of the
-  request and its config (system instruction, tools, output schema).
+  request and its config (system instruction, tools, output schema). The config is
+  dumped in Python mode, not JSON mode: ADK puts the output schema of an agent (the
+  Critic's `CriticResult`) in the config as a class, and JSON mode cannot serialize a
+  class. This was found in the first run with a real key, because no test had built a
+  request with an output schema class.
+- **`_json_default(value)`.** Turns what `json.dumps` cannot handle into key material: a
+  pydantic class becomes its JSON schema (a changed schema is a different key), an enum
+  its value, anything else `str(...)`.
 - **`before_model(ctx, llm_request)`.** On a hit returns the stored `LlmResponse`, so
   the model is not called. On a miss it remembers the key and returns `None`.
 - **`after_model(ctx, llm_response)`.** Stores the response of a miss, one JSON file per
@@ -85,11 +92,14 @@ writes cache files. The cache tests switch it on in a temporary directory.
 
 ### `tests/test_cache.py` (new)
 
-Twenty tests with `tmp_path`:
+Twenty-three tests with `tmp_path`:
 
 - A miss then a hit returns the stored response, with one file per key.
 - Different prompts, models, system instructions, tools and output schemas give
   different keys.
+- An output schema that is a pydantic class (the Critic's) can be hashed, a different
+  class gives a different key, and such a request is stored and hit. Enums and unknown
+  objects in the config can be hashed too.
 - `LLM_CACHE=off` disables reading and storing. The default is on, and the default
   directory is `.cache/llm`.
 - A corrupted file and a file of the wrong shape are a miss.
