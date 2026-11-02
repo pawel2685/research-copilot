@@ -104,6 +104,42 @@ python -c "from dotenv import load_dotenv; load_dotenv(); from google import gen
 It should print `ok`. The client is stored in a variable (`c`) on purpose, see
 Troubleshooting.
 
+### 6. Build the paper corpus
+
+The app searches a local corpus of arXiv papers. The corpus is not in git (`data/` is in
+`.gitignore`), so every team member builds it once. Without it, `python main.py`, the
+demos and the experiments stop with `No paper corpus at ...`.
+
+The five papers behind the evaluation questions (`evals/questions.py`) must be in it,
+or the metrics cannot find the expected sources. This query fetches them. In Windows
+PowerShell 5.1 the inner quotes must be escaped with a backslash, as in the second line:
+
+```powershell
+$q = 'ti:"Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks" OR ti:"Attention Is All You Need" OR ti:"BERT: Pre-training of Deep Bidirectional Transformers" OR ti:"LoRA: Low-Rank Adaptation of Large Language Models" OR ti:"Chain-of-Thought Prompting Elicits Reasoning in Large Language Models"'
+$q = $q -replace '"', '\"'
+python -m retrieval fetch --query $q --max-results 100
+python -m retrieval index
+```
+
+On macOS or Linux (bash) no escaping is needed: write `q='ti:"..." OR ti:"..."'` with
+the same query, skip the `-replace` line and pass it as `--query "$q"`.
+
+`fetch` saves the titles and abstracts to `data/corpus.jsonl`. `index` builds the vector
+index in `data/chroma/`, and its first run downloads the embedding model (a few hundred
+MB). Check that the five ids `2005.11401`, `1706.03762`, `1810.04805`, `2106.09685` and
+`2201.11903` are in the corpus:
+
+```bash
+python -m retrieval search "retrieval-augmented generation" --top-k 5
+```
+
+The query also returns other papers with similar titles. That is fine.
+
+**Use the same `corpus.jsonl` for all experiments.** arXiv results change over time, so
+fetching again can give another corpus and the results of two runs are no longer
+comparable. Copy the file between team members instead. Other options of the retrieval
+commands are in [docs/RETRIEVAL.md](docs/RETRIEVAL.md).
+
 ## Running the app and tests
 
 For the retrieval chat demo, run `python run_web.py` and open
@@ -116,7 +152,13 @@ python main.py "What problem does retrieval-augmented generation address?"
 
 The app prints a short Markdown report with its sources, then `Verified: yes` or
 `Verified: no`. Without a question it prints a usage line and exits with a non-zero
-code. It needs `MODEL_LIGHT` and `MODEL_HEAVY` in the local `.env`.
+code. It needs `MODEL_LIGHT` and `MODEL_HEAVY` in the local `.env`, and the corpus from
+step 6.
+
+**Current state.** Search is real: it uses hybrid search over the corpus. The Planner
+(part B) is not implemented yet, so the app searches the original question as it is,
+without splitting it into sub-questions. The Critic and the compression work. In our
+runs a question took 16 to 42 seconds on the free tier, plus the test run at the start.
 
 Every start runs the whole test suite first. The app starts only if all tests pass
 and total coverage is at least 80% (`fail_under` in `pyproject.toml`). Otherwise it
@@ -132,7 +174,7 @@ below the threshold and the app will not start.
 ## Demo in the browser
 
 The same pipeline can be tried in the ADK web interface. From the repository root, with
-the virtual environment active and your `.env` filled in:
+the virtual environment active, your `.env` filled in and the corpus built (step 6):
 
 ```bash
 adk web demo
@@ -160,8 +202,13 @@ print(stats)  # retrieved papers, model calls, tokens, latency
 ```
 
 Set `LLM_CACHE=off` for measured runs (see the next section), or the numbers are wrong.
-E0 is the baseline: the same pipeline with every switch off. While part B is missing,
-the numbers describe the stand-in search and are only a test of the harness.
+E0 is the baseline: the same pipeline with every switch off (vector search only, no
+compression, no Planner, no Critic). This definition is not agreed with the evaluation
+owner yet.
+
+Search is real, so E0 to E2 describe the real retrieval over your corpus. Run them all
+on the same `corpus.jsonl` (step 6). The Planner is not implemented yet, so E3 and E4
+run without it and do not show its effect. Repeat them once it is merged.
 
 ## Cache and retries
 
@@ -205,6 +252,7 @@ research-copilot/
 ├── agents/        ADK agents, the flow, skipping, cache, retries and run stats
 ├── demo/          the pipeline as an agent for `adk web`
 ├── retrieval/     search over the paper corpus
+├── data/          your local corpus and vector index, built in step 6 (not in git)
 ├── context/       context compression
 ├── evals/         test questions, metrics and results
 ├── stubs/         stand-ins so the team can work in parallel
@@ -235,3 +283,6 @@ Read [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) before your first change. In s
 | `429 RESOURCE_EXHAUSTED` | Free-tier rate limit reached. Wait a minute, or until the next day for the daily limit. |
 | `API key not valid` | Check `.env`: no quotes, no spaces around `=`, the whole key is present. |
 | `(.venv)` is missing in the prompt | The environment is not activated. Run the activation command from step 2. |
+| `Error: No paper corpus at ...` or `Corpus is missing` | The corpus is not built. Do step 6 (`fetch`, then `index`). |
+| `unrecognized arguments: ... OR ti:...` in `python -m retrieval fetch` | Windows PowerShell 5.1 dropped the inner quotes of the query. Escape them as in step 6 (`-replace '"', '\"'`). |
+| `ModuleNotFoundError: No module named 'rank_bm25'` (or `arxiv`, `chromadb`) | The dependencies are not installed after pulling. Run `pip install -r requirements.txt` in the active environment. |
