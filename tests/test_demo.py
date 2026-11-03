@@ -32,7 +32,12 @@ def _names(pipeline):
 def test_importing_the_demo_gives_a_root_agent_without_a_network_call(demo):
     assert isinstance(demo.root_agent, SequentialAgent)
     # The default config has the Critic on and no Planner is available yet.
-    assert _names(demo.root_agent) == ["search_branches", "writer", "critic"]
+    assert _names(demo.root_agent) == [
+        "planner",
+        "search_branches",
+        "writer",
+        "critic",
+    ]
 
 
 def test_the_package_exposes_the_agent_module_for_adk_web(demo):
@@ -41,14 +46,18 @@ def test_the_package_exposes_the_agent_module_for_adk_web(demo):
 
 
 def test_the_models_come_from_the_environment(demo):
-    writer = demo.root_agent.sub_agents[1]
+    planner = demo.root_agent.sub_agents[0]
+    writer = demo.root_agent.sub_agents[2]
+    critic = demo.root_agent.sub_agents[3]
+
+    assert planner.model.model == "dummy-light"
     assert writer.model.model == "dummy-heavy"
-    assert demo.root_agent.sub_agents[2].model.model == "dummy-light"
+    assert critic.model.model == "dummy-light"
 
 
 def test_the_critic_is_left_out_when_the_config_switches_it_off(demo):
     pipeline = demo.build_demo_pipeline(RunConfig(use_critic=False))
-    assert _names(pipeline) == ["search_branches", "writer"]
+    assert _names(pipeline) == ["planner", "search_branches", "writer"]
 
 
 def test_the_project_root_is_importable_for_adk_web(demo):
