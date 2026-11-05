@@ -11,6 +11,7 @@ import re
 import time
 
 from google.adk.agents import LlmAgent
+from google.genai import errors as genai_errors
 
 from agents.cache import cache_enabled
 from agents.critic import create_critic_agent
@@ -19,11 +20,17 @@ from agents.planner import create_planner_agent
 
 # B's retrieval, through the adapter. It needs the corpus built by `python -m retrieval`.
 from agents.retrieval_search import search as default_search
+from agents.retry import RETRYABLE_STATUS_CODES
 from agents.runner import PipelineResult, run_pipeline
 from agents.stats import RunStats
 from contracts import Report, RunConfig, SearchFn
 
 logger = logging.getLogger(__name__)
+
+# How many times `answer` repeats a whole run after an overloaded API, and the pause before
+# each repeat. Example values: the overload of the free tier comes in bursts of minutes.
+RUN_RETRIES = 2
+RUN_RETRY_PAUSE_S = 20.0
 
 # A paper id in square brackets, as the Reader writes it: `[2005.11401]`.
 _CITED_ID = re.compile(r"\[(\d{4}\.\d{4,5})(?:v\d+)?\]")
@@ -118,6 +125,25 @@ def answer(
 ) -> Report:
     """Answer a research question. Like `answer_with_stats`, but only the report.
 
-    The cache stays on here, it is meant for development and for the app.
+    The cache stays on here, it is meant for development and for the app. When the model
+    API stays overloaded (`503`) or rate limited (`429`) after the retries of every single
+    call (`agents/retry.py`), the whole run is repeated up to `RUN_RETRIES` times after a
+    pause. With the cache on a repeat is cheap, because the calls that worked are answered
+    from the cache. Any other error is raised at once.
     """
-    return _run(question, cfg, search_fn, planner, critic)[0]
+    repeats = 0
+    while True:
+        try:
+            return _run(question, cfg, search_fn, planner, critic)[0]
+        except genai_errors.APIError as error:
+            if error.code not in RETRYABLE_STATUS_CODES or repeats >= RUN_RETRIES:
+                raise
+            repeats += 1
+            logger.warning(
+                "The model API answered %s. Repeating the run in %.0f s (repeat %d of %d).",
+                error.code,
+                RUN_RETRY_PAUSE_S,
+                repeats,
+                RUN_RETRIES,
+            )
+            time.sleep(RUN_RETRY_PAUSE_S)

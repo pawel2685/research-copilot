@@ -113,6 +113,87 @@ def test_default_search_is_b_retrieval_through_the_adapter():
     assert pipeline.default_search is retrieval_search.search
 
 
+def _api_error(code):
+    from google.genai import errors
+
+    cls = errors.ServerError if code >= 500 else errors.ClientError
+    return cls(code, {"error": {"code": code, "message": "busy", "status": "X"}})
+
+
+class FlakyRun:
+    """Replaces `run_pipeline`: raises the given errors first, then returns a result."""
+
+    def __init__(self, errors, result=None):
+        self.errors = list(errors)
+        self.result = result or _result()
+        self.calls = 0
+
+    async def __call__(self, question, cfg, **kwargs):
+        self.calls += 1
+        if self.errors:
+            raise self.errors.pop(0)
+        return self.result
+
+
+@pytest.fixture
+def flaky(monkeypatch):
+    pauses = []
+    monkeypatch.setattr(pipeline.time, "sleep", pauses.append)
+    monkeypatch.setattr(pipeline, "create_critic_agent", lambda: "critic-agent")
+    monkeypatch.setattr(pipeline, "create_planner_agent", lambda: "planner-agent")
+
+    def install(errors):
+        run = FlakyRun(errors)
+        monkeypatch.setattr(pipeline, "run_pipeline", run)
+        return run
+
+    install.pauses = pauses
+    return install
+
+
+@pytest.mark.parametrize("code", [503, 429])
+def test_answer_repeats_the_run_after_an_overloaded_api(flaky, code):
+    run = flaky([_api_error(code), _api_error(code)])
+
+    report = pipeline.answer("q")
+
+    assert isinstance(report, Report)
+    assert run.calls == 3
+    assert flaky.pauses == [pipeline.RUN_RETRY_PAUSE_S] * 2
+
+
+def test_answer_gives_up_after_the_last_repeat(flaky):
+    run = flaky([_api_error(503)] * (pipeline.RUN_RETRIES + 1))
+
+    with pytest.raises(Exception, match="503"):
+        pipeline.answer("q")
+
+    assert run.calls == pipeline.RUN_RETRIES + 1
+    assert len(flaky.pauses) == pipeline.RUN_RETRIES
+
+
+@pytest.mark.parametrize("code", [400, 404, 500])
+def test_answer_does_not_repeat_other_api_errors(flaky, code):
+    run = flaky([_api_error(code)])
+
+    with pytest.raises(Exception, match=str(code)):
+        pipeline.answer("q")
+
+    assert run.calls == 1
+    assert flaky.pauses == []
+
+
+def test_answer_with_stats_never_repeats_a_run(flaky):
+    """A repeat would be counted into the latency of a measured run."""
+    run = flaky([_api_error(503)])
+
+    with pytest.raises(Exception, match="503"):
+        pipeline.answer_with_stats("q")
+
+    assert run.calls == 1
+    assert flaky.pauses == []
+
+
 def test_answer_uses_the_default_config(fake_run):
     pipeline.answer("q")
     assert fake_run.calls[0]["cfg"] == RunConfig()
