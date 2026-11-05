@@ -4,15 +4,14 @@ The native ADK Web chat runs one `research_demo` agent with the `search_papers`
 tool. It searches the existing local corpus using BM25, vector or hybrid mode.
 No Planner, report generation workflow or Critic is connected.
 
-From PowerShell in this workspace:
+From PowerShell, in the repository root with the project virtual environment
+active (`.venv\Scripts\Activate.ps1`):
 
 ```powershell
-cd C:\research_copilot\research-copilot
-..\.venv\Scripts\python.exe run_web.py
+python run_web.py
 ```
 
-For a normal project-local virtual environment, use `python run_web.py` after
-activation. The launcher checks `.env`, corpus availability and the full test
+The launcher checks `.env`, corpus availability and the full test
 suite (80% coverage gate), then serves on http://127.0.0.1:8000.
 Select **research_demo** in ADK Web and start a chat. Stop with Ctrl+C.
 

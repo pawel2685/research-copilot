@@ -1,9 +1,9 @@
 # A7: Integration with B and C
 
-Status: done (Planner stubbed). B's search is integrated: `answer` searches B's corpus
-through `agents/retrieval_search.py`. B's Planner does not exist yet, so "no Planner"
-stands in for it. The checklist for what is left is in "Waiting for B" in
-[README.md](README.md).
+Status: done. B's search is integrated: `answer` searches B's corpus through
+`agents/retrieval_search.py`. B's Planner (`agents/planner.py`) is integrated too: `answer`
+creates it when `cfg.use_planner` is on. What is still open is in "Open items" at the end
+of this file.
 
 Goal: the real modules replace the stand-ins, `answer()` is the one public entry point,
 and `python main.py "<question>"` answers a question.
@@ -30,9 +30,22 @@ and `python main.py "<question>"` answers a question.
 - **`answer(question, cfg=None, *, search_fn=default_search, planner=None,
   critic=None)`.** Runs `run_pipeline` with `asyncio.run` and returns `to_report(...)`.
   When `cfg.use_critic` is on and no critic is given, it creates C's
-  `create_critic_agent()`. When the switch is off, no critic is created. The Planner is
-  `None` for now, which means the Planner is left out and the original question is
-  searched.
+  `create_critic_agent()`. When `cfg.use_planner` is on and no planner is given, it
+  creates B's `create_planner_agent()`. When a switch is off, that agent is not created
+  and the pipeline leaves it out (a missing Planner means the original question is
+  searched). The `RunStats` of the run also say whether the Planner or the Critic was
+  skipped because of the time budget (`planner_skipped_by_deadline`,
+  `critic_skipped_by_deadline`, see [a9-evaluation-handoff.md](a9-evaluation-handoff.md)).
+
+### `agents/planner.py` (B's file, used as it is)
+
+`create_planner_agent(model=None)` returns an `LlmAgent` named `planner` on `MODEL_LIGHT`
+(read with `load_models()`, never a hard-coded name). Its instruction asks for up to four
+focused sub-questions as a JSON array of strings, in the language of the question, and
+the answer is stored in the state under `sub_questions`. That is what the search branches
+read. `normalize_sub_questions` (`agents/skipping.py`) turns the text into a list, also
+when the model puts the JSON in a Markdown code fence, and falls back to the original
+question when the text is not usable. Nothing is called when the agent is created.
 
 ### `agents/retrieval_search.py` (new, added when B's retrieval was merged)
 
@@ -162,13 +175,15 @@ with a failing gate (nothing starts). The tests of `run_app` are unchanged: a fa
 (usage, non-zero), and a `RuntimeError` (printed, `1`). The three tests of the quality
 gate are unchanged.
 
-## Still missing (placeholders)
+## Open items
 
-Left to do (same list as "Waiting for B" in [README.md](README.md)):
-
-- B's Planner agent. Then pass it as the default `planner` in `answer`. Its output
-  must match what `normalize_sub_questions` accepts (see the findings in
-  [a6-orchestration.md](a6-orchestration.md)).
+- The Planner's output was checked with one real call outside ADK: a clean JSON array of
+  two sub-questions, which the parser reads as two items. A whole run through the
+  pipeline was not seen (the API answered `503` on every try that day). The parser also
+  accepts an object with `questions` and both forms inside a code fence. See
+  [README.md](README.md).
+- `PLANNER_MIN_LEFT_S` is still an example value, see
+  [a4-time-budget.md](a4-time-budget.md).
 
 ## Manual check (done)
 
@@ -180,8 +195,7 @@ app runs first, took 33 s. The run found a bug in `agents/cache.py`: the cache k
 could not be built for the Critic, because its output schema is a class in the request
 config. It is fixed (see [a8-cache-and-retries.md](a8-cache-and-retries.md)).
 
-Until the Planner exists, the app runs end to end on B's search with real Gemini calls,
-with the Critic from C and without a Planner.
+That run was made before the Planner was merged, so it did not include the Planner.
 
 ## Commit
 

@@ -1,16 +1,15 @@
 # A9: Evaluation hand-off
 
-Status: done (Planner stubbed). The code and tests are finished. Search is B's real
-retrieval now. Final results for E3 and E4 need B's Planner (see "Open dependency on B").
+Status: done. The code and tests are finished. `answer_with_stats` searches B's real
+corpus and uses B's Planner and C's Critic when the configuration switches them on.
 
 Goal: C can run the experiments E0 to E4 on the pipeline and get the numbers the
 metrics need.
 
-**Open dependency on B.** `answer_with_stats` searches B's corpus now, so E0 to E2 run
-on the real retrieval (build the corpus first, and keep the same `corpus.jsonl` for all
-runs). The Planner is still missing (see "Waiting for B" in [README.md](README.md)), so
-E3 and E4 run without it and do not show its effect. Repeat them after B's Planner is
-integrated.
+**Before measuring.** Build the corpus first and keep the same `corpus.jsonl` for all
+runs (see the README, step 6), and set `LLM_CACHE=off`. C's benchmark
+(`evals/run_benchmark.py`) is the runner that does the 25 runs, see the README section
+"Experiments".
 
 ## For C: how to use it
 
@@ -58,18 +57,24 @@ A new file in C's folder, as the plan asks. No existing file of C was edited.
 
 - **`get_run_config(name)`.** Returns a copy, so changing it does not change the table.
   An unknown name raises `ValueError`.
-- **What E0 means (open decision for C).** E0 runs through the same pipeline as the
-  others, with every switch off: vector search only, no compression, no Planner, no
-  Critic. It still makes several model calls (Searcher, Reader, Writer). It is not a
-  separate single-call baseline. If C wants "one LLM call, no tools" for E0, that needs
-  its own function and has to be agreed first. The docstring of the module says the
-  decision is not agreed yet.
+- **What E0 means (decided by C, later).** This file was first written with E0 as the
+  same pipeline with every switch off (vector search only, no compression, no Planner,
+  no Critic), which still makes several model calls. C then decided that E0 is a
+  separate single-call baseline: `evals/single_call_baseline.py` retrieves with vector
+  search and writes the report with exactly one model call, and `evals/run_benchmark.py`
+  sends E0 there. The E0 entry above is kept in `EXPERIMENT_RUN_CONFIGS` only so that the
+  registry has all five names, and the module docstring says so. E1 to E4 still go
+  through `answer_with_stats` with the settings in the table.
 
 ### `agents/stats.py` (new)
 
 - **`RunStats`.** A frozen dataclass: `retrieved_source_ids` (tuple), `llm_calls`,
   `input_tokens`, `output_tokens`, `latency_seconds`. The names match
-  `EvaluationRecord`.
+  `EvaluationRecord`. Two flags were added later for the time-budget experiment
+  (`planner_skipped_by_deadline` and `critic_skipped_by_deadline`, both `False` by
+  default): the skip callbacks in `agents/orchestrator.py` set a marker in the state when
+  the deadline skips the agent, and `agents/pipeline.py` copies it into the stats. An
+  agent that is switched off in the configuration does not count as skipped.
 - **`UsageCounter`.** Adds up the ADK events of a run. An event with `usage_metadata`
   counts as one model call. Its `prompt_token_count` goes to the input tokens, its
   `candidates_token_count` plus `thoughts_token_count` to the output tokens (thinking

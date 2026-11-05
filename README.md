@@ -252,6 +252,15 @@ Run the benchmark with:
 LLM_CACHE=off python -m evals.run_benchmark
 ```
 
+The commands in this section set the variable in front of the command, which is bash
+syntax. In Windows PowerShell set it first and then run the same command without the
+prefix (the setting lasts for that window):
+
+```powershell
+$env:LLM_CACHE = "off"
+python -m evals.run_benchmark
+```
+
 Results are saved under `outputs/evaluation/`:
 
 - `results.csv` contains per-question retrieval, quality, cost and latency measurements.

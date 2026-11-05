@@ -42,4 +42,6 @@ def test_after_uses_the_clock_it_is_given():
 
 def test_default_clock_is_monotonic():
     deadline = Deadline.after(60)
-    assert 0 < deadline.left() <= 60
+    # The tolerance is for float rounding: a coarse clock (Windows) can give the same time
+    # twice, and (now + 60) - now is then 60.00000000000001.
+    assert 0 < deadline.left() <= 60 + 1e-6

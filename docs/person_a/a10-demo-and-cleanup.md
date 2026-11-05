@@ -1,14 +1,12 @@
 # A10: Demo and cleanup
 
-Status: done. The demo uses the stand-ins for B (see "Open dependency on B").
+Status: done. The demo uses B's real search (it needs the corpus) and B's Planner.
 
 Goal: a demo for the presentation and tidy documentation, so a new team member can
 follow the README and run everything.
 
-**Open dependency on B.** Before the final demo and the final README, finish the
-"Waiting for B" list in [README.md](README.md): the Planner and the manual check with a
-real key. The search is real now (it needs the corpus); without the Planner the demo
-searches the original question.
+`python main.py` without a question now starts this demo, after the tests, the `.env`
+check and the corpus (see [a7-integration.md](a7-integration.md), `launcher.py`).
 
 ## Files
 
@@ -34,9 +32,10 @@ Read top to bottom:
   four branches. It runs at every message, so a second question in the same chat starts
   clean and does not reuse the old notes or the old deadline.
 - **`build_demo_pipeline(cfg=None)`.** Builds the pipeline with `build_pipeline`: the
-  search tool from the default search (B's retrieval, so the demo needs the corpus), no
-  Planner yet (`TODO(B)`),
-  and C's Critic when `cfg.use_critic` is on. Adds the start callback.
+  search tool from the default search (B's retrieval, so the demo needs the corpus), B's
+  Planner when `cfg.use_planner` is on, and C's Critic when `cfg.use_critic` is on. Adds
+  the start callback. The Planner replaces the start state `sub_questions` (the question
+  alone) with its sub-questions, and the search branches read them.
 - **`root_agent`.** `build_demo_pipeline()` with the default `RunConfig()`. The agents
   have the retries and the cache like everywhere else, so repeating a question in the
   demo is fast.
@@ -74,8 +73,8 @@ Added `.adk/`, where `adk web` can store sessions.
 
 - Every stage file describes what was built. A0 and A3 got a note where later stages
   changed the picture (`run_app` in A7, `answer` in `agents/pipeline.py`).
-- The status table in [README.md](README.md) is correct: A0 to A6 and A8 are `done`,
-  A7, A9 and A10 are `done` with B stubbed.
+- The status table in [README.md](README.md) is correct: all stages A0 to A10 are
+  `done`.
 - `docs/Research Copilot (EN).html` (550 KB, an exported document) is the leftover the
   plan names. It is tracked, so the user removes it with git after checking that nobody
   needs it.
