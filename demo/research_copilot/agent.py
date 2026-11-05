@@ -24,6 +24,7 @@ load_dotenv(ROOT / ".env")
 from google.adk.agents import SequentialAgent  # noqa: E402
 
 from agents.critic import create_critic_agent  # noqa: E402
+from agents.planner import create_planner_agent  # noqa: E402
 from agents.orchestrator import build_pipeline, notes_keys  # noqa: E402
 from agents.pipeline import default_search  # noqa: E402
 from agents.tools import make_search_tool  # noqa: E402
@@ -61,7 +62,7 @@ def build_demo_pipeline(cfg: RunConfig | None = None) -> SequentialAgent:
     pipeline = build_pipeline(
         cfg,
         search_tool=search_tool,
-        planner=None,
+        planner=create_planner_agent() if cfg.use_planner else None,
         critic=create_critic_agent() if cfg.use_critic else None,
     )
     pipeline.before_agent_callback = make_start_callback(cfg)

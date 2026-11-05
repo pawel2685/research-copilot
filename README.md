@@ -1,9 +1,11 @@
+
 # Research Copilot
 
 A multi-agent research assistant built with [Google ADK](https://google.github.io/adk-docs/).
 Given a research question, it finds papers on arXiv, summarises them, checks its
-own claims and writes a short report with sources. Five agents work together, and
-two of them (Planner and Critic) are skipped when the time budget runs short.
+own claims and writes a short report with sources. The pipeline includes
+retrieval, context compression, a Planner, a Writer and a Critic. The Planner
+and Critic can be skipped when the time budget runs short.
 
 > Retrieval: arXiv corpus, BM25, vector and hybrid search are implemented.
 > See [retrieval setup and usage](docs/RETRIEVAL.md). `python main.py` searches this
@@ -13,7 +15,7 @@ two of them (Planner and Critic) are skipped when the time budget runs short.
 
 - Python 3.12
 - Git
-- A free Google account (for the Gemini API key)
+- A Google account for the Gemini API key
 
 ## Setup
 
@@ -57,35 +59,40 @@ If PowerShell refuses to run the activation script, run this once and try again:
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 ```
 
-### 3. Get a Gemini API key (free)
+### 3. Get a Gemini API key
 
-Every team member creates their own key. Free-tier limits are counted per key, so a
-shared key would run out quickly.
+Every team member should create their own key. Free-tier limits are counted per key,
+so a shared key can run out quickly.
 
 1. Open <https://aistudio.google.com/apikey> and sign in with a Google account.
 2. Click **Create API key**.
-3. Choose **Default Gemini Project** (or create a new project for this repo). Do not
-   pick an existing project that may have billing enabled.
-4. Name the key `research-copilot` and create it, then copy it.
-5. Check on the keys list that the **Billing Tier** column says **Free tier**.
+3. Choose **Default Gemini Project** (or create a new project for this repo).
+4. Create the key and copy it.
 
-Do not set up billing. On the free tier you cannot be charged: when a limit is
-reached the API returns an error instead of a bill. On the free tier Google may use
-the data you send to improve its services, so never send anything confidential.
+Check the current billing tier and pricing conditions in Google AI Studio.
+Never send confidential data to the API.
 
 You do not need the project name or the project number. They are only used by
 Vertex AI, which this project does not use.
 
 ### 4. Create your `.env` file
 
+On Windows PowerShell:
+
 ```powershell
 Copy-Item .env.example .env
+```
+
+On macOS or Linux:
+
+```bash
+cp .env.example .env
 ```
 
 Open `.env` and replace the placeholder with your key. No quotes and no spaces
 around `=`:
 
-```
+```text
 GOOGLE_GENAI_USE_VERTEXAI=FALSE
 GOOGLE_API_KEY=your-api-key-here
 MODEL_LIGHT=gemini-3.5-flash-lite
@@ -174,10 +181,14 @@ The app prints a short Markdown report with its sources, then `Verified: yes` or
 `Verified: no`. It needs `MODEL_LIGHT` and `MODEL_HEAVY` in the local `.env`, and the
 corpus from step 6.
 
-**Current state.** Search is real: it uses hybrid search over the corpus. The Planner
-(part B) is not implemented yet, so the app searches the original question as it is,
-without splitting it into sub-questions. The Critic and the compression work. In our
-runs a question took 16 to 42 seconds on the free tier, plus the test run at the start.
+**Current implementation.** The complete research pipeline includes context
+compression, the Planner and the Critic. The Planner generates focused
+sub-questions, retrieval branches search for relevant papers, the Writer
+produces a report, and the Critic checks its claims. The Critic can trigger
+one report revision after rejecting a report.
+
+Both the Planner and Critic can be skipped when the remaining time budget
+is insufficient. Their deadline-based skipping is recorded in run statistics.
 
 Every start runs the whole test suite first. The app starts only if all tests pass
 and total coverage is at least 80% (`fail_under` in `pyproject.toml`). Otherwise it
@@ -202,33 +213,126 @@ adk web demo
 
 Open the address it prints (<http://127.0.0.1:8000> by default), choose
 `research_copilot` in the top left and type a research question. The interface shows
-every agent step: the parallel search branches, the Writer and the Critic. The report
-is the Writer's answer. Two differences from `python main.py`: the demo does not run
-the tests first, and it does not do the one revision after a rejecting Critic.
+the agent steps, including parallel search branches, the Writer and the Critic.
+The report is the Writer's answer. Two differences from `python main.py`: the demo
+does not run the tests first, and it does not do the one revision after a rejecting Critic.
 
 ## Experiments
 
-The evaluation compares five configurations, E0 to E4, each adding one thing to the
-previous one (hybrid search, compression, the Planner, the Critic). `get_run_config`
-returns the `RunConfig` of one of them, and `answer_with_stats` runs a question and also
-returns what the run cost:
+The evaluation compares five configurations, E0 to E4, using the same five
+research questions and the same local arXiv corpus.
 
-```python
-from agents.pipeline import answer_with_stats
-from evals.experiment_configs import get_run_config
+### Main E0-E4 benchmark
 
-report, stats = answer_with_stats("What is LoRA?", get_run_config("E4"))
-print(stats)  # retrieved papers, model calls, tokens, latency
+The configurations are:
+
+| Configuration | Retrieval | Compression | Planner | Critic |
+|----------------|-----------|-------------|---------|--------|
+| E0 | Vector search | No | No | No |
+| E1 | Hybrid search | No | No | No |
+| E2 | Hybrid search | Yes (3000 words) | No | No |
+| E3 | Hybrid search | Yes (3000 words) | Yes | No |
+| E4 | Hybrid search | Yes (3000 words) | Yes | Yes |
+
+E0 is a separate single-call baseline, implemented in
+`evals/single_call_baseline.py`. It retrieves passages using vector search
+(`hybrid=False`, k=8) and generates a report with exactly one LLM agent call.
+It does not use context compression, the Planner or the Critic.
+
+E1-E4 use the main pipeline through `answer_with_stats`. Each configuration
+adds a capability to the preceding one.
+
+The benchmark is implemented in `evals/run_benchmark.py`. It runs 25 jobs
+(five configurations multiplied by five questions), saves successful results
+after each run and can resume without repeating completed runs.
+
+Run the benchmark with:
+
+```bash
+LLM_CACHE=off python -m evals.run_benchmark
 ```
 
-Set `LLM_CACHE=off` for measured runs (see the next section), or the numbers are wrong.
-E0 is the baseline: the same pipeline with every switch off (vector search only, no
-compression, no Planner, no Critic). This definition is not agreed with the evaluation
-owner yet.
+Results are saved under `outputs/evaluation/`:
 
-Search is real, so E0 to E2 describe the real retrieval over your corpus. Run them all
-on the same `corpus.jsonl` (step 6). The Planner is not implemented yet, so E3 and E4
-run without it and do not show its effect. Repeat them once it is merged.
+- `results.csv` contains per-question retrieval, quality, cost and latency measurements.
+- `reports/` contains the generated Markdown reports.
+- `failures.jsonl` contains failed runs.
+- `summary.csv` and `summary.md` contain aggregated evaluation metrics once the
+  full benchmark matrix is complete.
+
+Report quality is evaluated separately after report generation. The LLM judge is
+implemented in `evals/quality_judge.py`, and the scoring runner is
+`evals/score_reports.py`.
+
+Run the quality scorer with a limited number of new judge requests:
+
+```bash
+LLM_CACHE=off python -m evals.score_reports --limit 5
+```
+
+The scoring process saves its progress and can be resumed by running the command
+again. The limit applies to new judge requests, not to reports already scored.
+
+Manual review is handled separately by `evals/manual_review.py`. The scoring
+workflow creates a `manual_review.csv` template for recording human assessments.
+The manual review module validates these scores and generates summary outputs.
+
+### Time-budget experiment
+
+A separate experiment investigates the relationship between execution time
+budget and report quality.
+
+It uses the E4 configuration with three time budgets:
+
+- 30 seconds
+- 60 seconds
+- 120 seconds
+
+Each budget is tested against the same five questions, resulting in 15 runs.
+
+The runner is implemented in `evals/time_budget_experiment.py`:
+
+```bash
+LLM_CACHE=off python -m evals.time_budget_experiment
+```
+
+The experiment records actual latency, token usage, LLM calls and whether
+the Planner or Critic was skipped because of the deadline.
+
+The time budget is a soft deadline. It controls whether additional stages
+should run, but does not forcibly terminate an LLM call that is already
+in progress. Actual execution time can therefore exceed the configured
+budget.
+
+Time-budget reports and measurements are saved under
+`outputs/evaluation/time_budget/`.
+
+The corresponding LLM quality scoring runner is:
+
+```bash
+LLM_CACHE=off python -m evals.score_time_budget --limit 5
+```
+
+The `--limit` option restricts the number of new judge requests. The scoring
+process can be resumed by running the same command again.
+
+The time-budget evaluation produces a summary with mean quality, latency,
+token usage, and Planner/Critic skip rates for each budget.
+
+### Evaluation metrics
+
+The evaluation considers:
+
+- **Retrieval quality:** Recall@5 against the expected paper IDs.
+- **Report quality:** independent LLM judge scores and manual review.
+- **Cost:** LLM calls and input/output token counts.
+- **Latency:** actual end-to-end execution time.
+- **Time-budget behaviour:** Planner and Critic skip rates under
+  different time constraints.
+
+The LLM judge and manual review are separate evaluation methods.
+Quality scores should be interpreted together with retrieval and
+cost measurements, rather than as a standalone measure of system quality.
 
 ## Cache and retries
 
@@ -243,7 +347,7 @@ every model call is protected:
   `LLM_CACHE_DIR` to use another directory.
 - **Switch it off for measurements.** The evaluation measures latency and token use,
   and a cached answer returns at once and costs no tokens. Set `LLM_CACHE=off` for
-  every measured run (for example in `.env`). Delete `.cache/` to start fresh.
+  every measured run. Delete `.cache/` to start fresh.
 
 ## Models
 
@@ -267,7 +371,7 @@ free tier column says **Free of charge**.
 
 ## Project structure
 
-```
+```text
 research-copilot/
 ├── agents/        ADK agents, the flow, skipping, cache, retries and run stats
 ├── demo/          the pipeline as an agent for `adk web`

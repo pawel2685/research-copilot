@@ -9,7 +9,8 @@ import asyncio
 import logging
 import re
 import time
-
+from agents.critic import create_critic_agent
+from agents.planner import create_planner_agent
 from google.adk.agents import LlmAgent
 
 from agents.cache import cache_enabled
@@ -57,6 +58,10 @@ def _run(
     critic: LlmAgent | None,
 ) -> tuple[Report, RunStats]:
     cfg = cfg or RunConfig()
+
+    if planner is None and cfg.use_planner:
+        planner = create_planner_agent()
+
     if critic is None and cfg.use_critic:
         critic = create_critic_agent()
     start = time.perf_counter()
@@ -69,6 +74,12 @@ def _run(
         input_tokens=result.input_tokens,
         output_tokens=result.output_tokens,
         latency_seconds=time.perf_counter() - start,
+        planner_skipped_by_deadline=bool(
+            result.state.get("planner_skipped_by_deadline", False)
+        ),
+        critic_skipped_by_deadline=bool(
+            result.state.get("critic_skipped_by_deadline", False)
+        ),
     )
     return to_report(question, result), stats
 

@@ -32,14 +32,18 @@ from agents.skipping import (
 from agents.writer import create_writer_agent
 from contracts import RunConfig
 
-_CRITIC_SKIP_TEXT = critic_skipped_result(
-    "Critic skipped because the time budget was insufficient."
-).model_dump_json()
-
-
 def _planner_skip_text(ctx: Any) -> str:
-    """A skipped Planner "plans" the original question as the only sub-question."""
+    """Record that the Planner was skipped because of the time budget."""
+    ctx.state["planner_skipped_by_deadline"] = True
     return json.dumps([ctx.state["question"]])
+
+
+def _critic_skip_text(ctx: Any) -> str:
+    """Record that the Critic was skipped because of the time budget."""
+    ctx.state["critic_skipped_by_deadline"] = True
+    return critic_skipped_result(
+        "Critic skipped because the time budget was insufficient."
+    ).model_dump_json()
 
 
 def harden_agent(agent: LlmAgent) -> LlmAgent:
@@ -133,6 +137,6 @@ def build_pipeline(
     steps += [branches, writer]
     if cfg.use_critic and critic is not None:
         steps.append(_with_deadline_callback(
-                harden_agent(critic), CRITIC_MIN_LEFT_S, _CRITIC_SKIP_TEXT
-            ))
+            harden_agent(critic), CRITIC_MIN_LEFT_S, _critic_skip_text
+        ))
     return SequentialAgent(name="research_pipeline", sub_agents=steps)

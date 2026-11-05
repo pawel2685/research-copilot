@@ -92,7 +92,19 @@ def test_answer_returns_a_report_and_passes_the_config_on(fake_run):
     call = fake_run.calls[0]
     assert (call["question"], call["cfg"]) == ("my question", cfg)
     assert call["search_fn"] is pipeline.default_search
-    assert call["planner"] is None
+    assert call["planner"].name == "planner"
+
+def test_answer_leaves_planner_out_when_config_switches_it_off(
+    fake_run, monkeypatch
+):
+    def fail():
+        raise AssertionError("The Planner must not be created")
+
+    monkeypatch.setattr(pipeline, "create_planner_agent", fail)
+
+    pipeline.answer("q", RunConfig(use_planner=False))
+
+    assert fake_run.calls[0]["planner"] is None
 
 
 def test_default_search_is_b_retrieval_through_the_adapter():
