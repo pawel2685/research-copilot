@@ -24,9 +24,9 @@ load_dotenv(ROOT / ".env")
 from google.adk.agents import SequentialAgent  # noqa: E402
 
 from agents.critic import create_critic_agent  # noqa: E402
-from agents.planner import create_planner_agent  # noqa: E402
 from agents.orchestrator import build_pipeline, notes_keys  # noqa: E402
 from agents.pipeline import default_search  # noqa: E402
+from agents.planner import create_planner_agent  # noqa: E402
 from agents.tools import make_search_tool  # noqa: E402
 from contracts import RunConfig  # noqa: E402
 
@@ -58,7 +58,6 @@ def build_demo_pipeline(cfg: RunConfig | None = None) -> SequentialAgent:
     search_tool = make_search_tool(
         default_search, hybrid=cfg.hybrid, budget_words=cfg.compress_budget_words
     )
-    # TODO(B): pass B's Planner agent as `planner` once it is merged.
     pipeline = build_pipeline(
         cfg,
         search_tool=search_tool,

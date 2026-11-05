@@ -9,20 +9,19 @@ import asyncio
 import logging
 import re
 import time
-from agents.critic import create_critic_agent
-from agents.planner import create_planner_agent
+
 from google.adk.agents import LlmAgent
 
 from agents.cache import cache_enabled
 from agents.critic import create_critic_agent
 from agents.orchestrator import notes_keys
+from agents.planner import create_planner_agent
+
+# B's retrieval, through the adapter. It needs the corpus built by `python -m retrieval`.
+from agents.retrieval_search import search as default_search
 from agents.runner import PipelineResult, run_pipeline
 from agents.stats import RunStats
 from contracts import Report, RunConfig, SearchFn
-
-# B's retrieval, through the adapter. It needs the corpus built by `python -m retrieval`.
-# TODO(B): pass B's Planner agent as the default `planner` of `answer` once it is merged.
-from agents.retrieval_search import search as default_search
 
 logger = logging.getLogger(__name__)
 
