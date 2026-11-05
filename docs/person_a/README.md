@@ -26,38 +26,49 @@ evaluation tooling (C).
 | A4 | [Time budget and skipping](a4-time-budget.md) | done | A3 |
 | A5 | [ADK agents](a5-adk-agents.md) | done | A3 |
 | A6 | [ADK orchestration](a6-orchestration.md) | done | A4, A5 |
-| A7 | [Integration with B and C](a7-integration.md) | done (Planner stubbed) | A6 |
+| A7 | [Integration with B and C](a7-integration.md) | done | A6 |
 | A8 | [Cache and retries](a8-cache-and-retries.md) | done | A6 |
-| A9 | [Evaluation hand-off](a9-evaluation-handoff.md) | done (B stubbed) | A7, A8 |
-| A10 | [Demo and cleanup](a10-demo-and-cleanup.md) | done (B stubbed) | A9 |
+| A9 | [Evaluation hand-off](a9-evaluation-handoff.md) | done | A7, A8 |
+| A10 | [Demo and cleanup](a10-demo-and-cleanup.md) | done | A9 |
 
 The instructions for building each stage are in
 [implementation/](implementation/README.md), one plan per stage.
 
-## Waiting for B
+## Integration with B and C
 
-B's search is integrated. The Planner is still missing, so the app runs without it. When
-B's Planner is merged into `main`, do the rest and tick it off.
+B's and C's parts are merged and wired in. Checklist:
 
 - [x] Search: `default_search` in `agents/pipeline.py` is B's retrieval through the
       adapter `agents/retrieval_search.py` (it fits `SearchFn`). The app needs the
-      corpus: `python -m retrieval fetch ...` and `python -m retrieval index`.
-- [ ] Planner: pass B's Planner agent as the default `planner` of `answer` in
-      `agents/pipeline.py`. Check that its output matches `normalize_sub_questions`
-      (a list of strings, a dict with a `questions` list, or a JSON string of either).
-- [ ] Tests: done for the search (`test_default_search_is_b_retrieval_through_the_adapter`
-      and `tests/test_retrieval_search.py`). Still to add: one run with the Planner. Keep
-      the fake-model tests.
+      corpus: `python -m retrieval fetch ...` and `python -m retrieval index`, or
+      `python main.py`, which builds it by itself.
+- [x] Planner: `answer` creates B's Planner (`agents/planner.py`) when `cfg.use_planner`
+      is on, and the demo does the same. Its output is a JSON array of strings, which
+      `normalize_sub_questions` accepts, also inside a Markdown code fence.
+- [x] Tests: the search (`test_default_search_is_b_retrieval_through_the_adapter`,
+      `tests/test_retrieval_search.py`), the Planner (`tests/test_planner.py`, the flow
+      tests with a fake model) and the parser (`tests/test_skip_callbacks.py`).
 - [x] Manual check with a real key: `python main.py "What problem does
       retrieval-augmented generation address?"` gave a report citing `2005.11401` and
-      `Verified: yes`, without a Planner. It also found a bug in `agents/cache.py` (the
-      Critic's output schema class could not be hashed), now fixed and tested.
-- [ ] Docs: update `a7-integration.md` and set its status to `done`.
+      `Verified: yes`. It also found a bug in `agents/cache.py` (the Critic's output
+      schema class could not be hashed), now fixed and tested. That run was made before
+      the Planner was merged.
+- [x] Docs: the stage files are up to date and all stages are `done`.
 
-Other open items: `PLANNER_MIN_LEFT_S` is still an example value and needs a measurement
-once the Planner exists. `CRITIC_MIN_LEFT_S` was measured (see
-[a4-time-budget.md](a4-time-budget.md)). The manual run from
-[a6-orchestration.md](a6-orchestration.md) is covered by the run of `main.py` above.
+### Checked with the real API
+
+- [x] A whole run with the Planner on "How does BERT build on the Transformer
+      architecture, and how does LoRA make fine-tuning such models cheaper?": the Planner
+      returned a clean JSON array (no code fence) with two sub-questions, the pipeline
+      used both (10 model calls) and the report cited `1810.04805` and `2106.09685`. It
+      took 67.6 s, while the API was under load (it answered `503` on earlier tries the
+      same day).
+- [x] `PLANNER_MIN_LEFT_S` and `CRITIC_MIN_LEFT_S` were measured and kept at 40 s and
+      30 s, see [a4-time-budget.md](a4-time-budget.md).
+
+Not checked: the interface in the browser with a real question (the server starts and
+lists `research_copilot`, but the chat was not used), and `python main.py` on a machine
+without `data/`.
 
 ## Branch and commits
 
@@ -75,17 +86,11 @@ or changed, described from top to bottom.
 | Need | From | Status | Workaround until it is ready |
 |------|------|--------|------------------------------|
 | `search()` returning `Chunk` with arXiv ids | B | integrated | `retrieval/` is merged. `agents/retrieval_search.py` adapts it to `SearchFn`, and `agents/pipeline.py` uses it. The stub in `stubs/` stays for tests, `agents/baseline.py` and `agents/runner.py` |
-| Planner agent | B | **missing** | `planner=None`: the Planner is left out and the original question is searched |
+| Planner agent | B | integrated | `agents/planner.py`, created in `agents/pipeline.py` and in the demo |
 | `compress()` | C | integrated | already merged (`context/compression.py`) |
 | Critic agent | C | integrated | already merged (`agents/critic.py`), wired in `agents/pipeline.py` |
 
-What to do when the missing parts arrive is in "Waiting for B" above.
-
-**Effect on the later stages.** Search is real now, so `hybrid` has an effect (E0 uses
-vector search only, the other experiments use hybrid search). Until B's Planner is
-integrated, anything measured or shown runs without a Planner. Results of A9 (the
-experiments E0 to E4) and the demo of A10 are not final then. The ablation of the
-Planner (E3 and E4, `use_planner`) cannot show a real effect.
+Nothing is missing. What is still open is in "Open items" above.
 
 ## Decisions so far
 

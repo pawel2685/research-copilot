@@ -56,8 +56,10 @@ and keys. The defaults are the A5 values, so nothing else changes.
   under the `output_key` of the skipped agent and validates it against its
   `output_schema`, so it must be a valid output of that agent (see "Findings").
 - **`normalize_sub_questions(value, question)`.** Accepts `None`, a list of strings, a
-  dict with a `questions` list, or a JSON string of either. Returns at most four
-  non-empty, stripped strings, or `[question]` when nothing usable is given.
+  dict with a `questions` list, or a JSON string of either, also when the string is
+  wrapped in a Markdown code fence (models add one even when told not to; the fence is
+  removed before the JSON is read). Returns at most four non-empty, stripped strings, or
+  `[question]` when nothing usable is given.
 - **`make_branch_callback(index)`.** A `before_agent_callback` for a branch. It reads
   `question` and `sub_questions` from the state, normalises them, and skips the branch
   when there is no item at `index`. Otherwise it stores the item as
@@ -123,8 +125,9 @@ the real ADK `Runner` runs the whole flow without the network.
 - The branch callback skips a branch without a sub-question, stores the sub-question
   as `sub_question_N`, falls back to the question, reads the Planner JSON, and skips
   when there is no question at all.
-- `normalize_sub_questions` for `None`, a list, a dict, JSON strings, more than four
-  items, empty strings, non-strings, garbage and other types.
+- `normalize_sub_questions` for `None`, a list, a dict, JSON strings, JSON in a code
+  fence (with and without a language, with an object, and with garbage inside), more than
+  four items, empty strings, non-strings, garbage and other types.
 
 ### `tests/test_orchestrator.py` (new)
 
@@ -205,10 +208,12 @@ Still to do by hand, because it needs the real API key:
 
 - The shape of the Planner output (`sub_questions`): a list of strings, or a dict with
   a `questions` list, or a JSON string of either. `normalize_sub_questions` accepts all
-  of these, but B's Planner and the skip text above must agree. Confirm with B.
-- The threshold `CRITIC_MIN_LEFT_S` was checked with real runs (see
-  [a4-time-budget.md](a4-time-budget.md)). `PLANNER_MIN_LEFT_S` is still an example
-  value, because there is no Planner yet.
+  of these. B's Planner (`agents/planner.py`) is told to return a JSON array of strings,
+  and the skip text of a skipped Planner is a JSON array with the question, so they
+  agree. The Planner returned a clean JSON array in a real run (see
+  [README.md](README.md)).
+- The thresholds `CRITIC_MIN_LEFT_S` and `PLANNER_MIN_LEFT_S` were checked with real
+  calls (see [a4-time-budget.md](a4-time-budget.md)).
 
 ## Commit
 
