@@ -109,13 +109,15 @@ def build_pipeline(
     planner: LlmAgent | None = None,
     critic: LlmAgent | None = None,
     models: tuple[str, str] | None = None,
+    pipeline_class: type[SequentialAgent] = SequentialAgent,
 ) -> SequentialAgent:
     """Build the whole flow without making an API request.
 
     `models` is `(light, heavy)`, read from `.env` when it is `None`. The Planner and
     the Critic are only part of the flow when `cfg` switches them on and an agent is
     given. They get a callback that skips them when time runs short. Every agent gets
-    retries on its model and the response cache (see `harden_agent`).
+    retries on its model and the response cache (see `harden_agent`). `pipeline_class`
+    is the class of the whole flow, a `SequentialAgent` or a subclass of it.
     """
     light, heavy = models or load_models()
     branches = ParallelAgent(
@@ -139,4 +141,4 @@ def build_pipeline(
         steps.append(_with_deadline_callback(
             harden_agent(critic), CRITIC_MIN_LEFT_S, _critic_skip_text
         ))
-    return SequentialAgent(name="research_pipeline", sub_agents=steps)
+    return pipeline_class(name="research_pipeline", sub_agents=steps)

@@ -33,6 +33,7 @@ from agents.orchestrator import build_pipeline, notes_keys  # noqa: E402
 from agents.pipeline import default_search  # noqa: E402
 from agents.planner import create_planner_agent  # noqa: E402
 from agents.tools import make_search_tool  # noqa: E402
+from agents.verdict import ReadableSequentialAgent  # noqa: E402
 from contracts import RunConfig  # noqa: E402
 
 
@@ -73,6 +74,7 @@ def build_demo_pipeline(cfg: RunConfig | None = None) -> SequentialAgent:
         search_tool=search_tool,
         planner=create_planner_agent() if cfg.use_planner else None,
         critic=create_critic_agent() if cfg.use_critic else None,
+        pipeline_class=ReadableSequentialAgent,
     )
     pipeline.before_agent_callback = make_start_callback(cfg)
     light, heavy = load_models()
