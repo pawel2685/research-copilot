@@ -38,7 +38,47 @@ Read top to bottom:
   alone) with its sub-questions, and the search branches read them.
 - **`root_agent`.** `build_demo_pipeline()` with the default `RunConfig()`. The agents
   have the retries and the cache like everywhere else, so repeating a question in the
-  demo is fast.
+  demo is faster (a repeat of a question with several sub-questions still asks the Writer
+  and the Critic again, see [a8-cache-and-retries.md](a8-cache-and-retries.md)).
+
+### `agents/model_switch.py` (new, added later)
+
+The switch of the Writer's model from the chat, because `adk web` has no place for our own
+buttons and `MODEL_HEAVY` can have a much lower free-tier quota than `MODEL_LIGHT` (see the
+README, "Models").
+
+- **`split_command(text)`.** A message that starts with `/lite`, `/light` or `/heavy`
+  (not case sensitive, as a whole word) gives `("light" | "heavy", question)`. Any other
+  message gives `(None, text)`, so `/unknown ...`, `Is /lite a command?` and `/litely` are
+  plain questions.
+- **`make_model_override(light, heavy)`.** A `before_model_callback` that sets
+  `llm_request.model` to `light` when the session state `writer_model_choice` is
+  `"light"`, otherwise to `heavy`, and records the name in `writer_model_used` (visible in
+  the State tab of `adk web`). ADK calls the model named in `llm_request.model`, so this
+  changes the call. It returns no response, so the call goes on.
+- **`add_writer_switch(pipeline, light, heavy)`.** Puts the override in front of the model
+  callbacks of the agent named `writer`, before the response cache, because the model name
+  is part of the cache key. Other agents are not touched.
+
+### `demo/research_copilot/agent.py` (changed, same change)
+
+`make_start_callback` reads the command with `split_command`, strips it from the question
+and stores the choice in `writer_model_choice`. The choice is sticky for the chat: a message
+without a command keeps it, and `/heavy` goes back. `build_demo_pipeline` adds the switch
+with the models of `.env` (`load_models()`), so no model name is written in the code. A
+live check with the quota of `MODEL_HEAVY` used up: `/lite What is chain-of-thought
+prompting?` ran the Writer on `gemini-3.5-flash-lite` and gave a report.
+
+### `tests/test_model_switch.py` (new, added later)
+
+- `split_command`: commands, case, extra spaces, a command alone, and what is not a command.
+- The override picks the model from the choice (none, heavy, light, nonsense) and records it.
+- The switch goes in front of the Writer's cache callback, keeps one callback that was not a
+  list, works without callbacks, and leaves a pipeline without a Writer alone.
+- The whole flow on the real ADK runner with a fake model that records the model name of
+  every request: no command gives the model of the environment, `/lite` the light model and
+  stays, `/heavy` goes back, the command is not in the question, and the state shows the
+  model used.
 
 ### `tests/test_demo.py` (new)
 
@@ -51,7 +91,9 @@ are set in the environment.
   Critic is left out when the config switches it off, and the project root is on the
   path.
 - The start callback sets the state for a question, starts a second question fresh, and
-  copes with a message without text.
+  copes with a message without text. It also reads the model command, strips it from the
+  question, keeps the choice for the chat, and sets nothing without a command. The demo's
+  Writer has the switch.
 - The demo flow on the real ADK runner with a fake model: the start callback,
   branches, Writer and Critic run, and the session holds the report and an approving
   Critic result.

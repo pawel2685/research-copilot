@@ -37,6 +37,18 @@ and `python main.py "<question>"` answers a question.
   skipped because of the time budget (`planner_skipped_by_deadline`,
   `critic_skipped_by_deadline`, see [a9-evaluation-handoff.md](a9-evaluation-handoff.md)).
 
+- **Repeats of a run (`RUN_RETRIES = 2`, `RUN_RETRY_PAUSE_S = 20.0`).** `answer` repeats
+  the whole run when the model API answers `503` or `429` (the codes of
+  `agents/retry.py`) after the retries of every single call are used up. It waits 20 s
+  before each repeat and logs a warning. Any other error, and the third failure, are
+  raised. With the cache on, a repeat does not ask again for the calls that worked, except
+  the Writer and the Critic of a question with several sub-questions (see
+  [a8-cache-and-retries.md](a8-cache-and-retries.md)). `answer_with_stats` never repeats a
+  run: the repeat would count into the measured latency, and the benchmark of C resumes
+  by itself. The example values come from the bursts of `503` seen on the free tier,
+  which last longer than the per-call retries (about 14 s). If the API is down for
+  minutes, three tries do not help, and the person asks again.
+
 ### `agents/planner.py` (B's file, used as it is)
 
 `create_planner_agent(model=None)` returns an `LlmAgent` named `planner` on `MODEL_LIGHT`
@@ -79,7 +91,11 @@ Python baseline and `run_pipeline` still work without a corpus.
   question. Without a question it prints the usage line and returns `2`. Otherwise it
   calls `answer(question)`, prints the Markdown report, an empty line and
   `Verified: yes` or `Verified: no`, and returns `0`. A `RuntimeError` (for example a
-  model name missing in `.env`) is printed as `Error: ...` and returns `1`.
+  model name missing in `.env`) is printed as `Error: ...` and returns `1`. An error of
+  the model API (`google.genai.errors.APIError`) is printed as `Error: ...` with a
+  readable text and returns `1`, with no traceback: `503` (overloaded, ask again, the cache
+  keeps the answers that worked), `429` (limit reached, wait or see the daily limit in the
+  README), `404` (check the model names in `.env`), and any other code with its message.
 - **`main(argv=None)`.** The quality gate still runs first. Then a question on the
   command line goes to `run_app`, and no question (nothing, empty, blanks) starts the web
   interface with `launch_web()`. So `python main.py` is the one entry point for both: the
@@ -148,6 +164,14 @@ encoder in place of the embedding model, so nothing is downloaded.
   explicitly, because the default needs a corpus on disk. The flow it checks is the same.
 - `test_demo.py`: the same for the demo test with the real ADK runner and a fake model,
   which builds its search tool from the stub.
+
+### `tests/test_pipeline.py` and `tests/test_main.py` (added later: overloaded API)
+
+- `answer` repeats the run after `503` and after `429` (with the pause between the
+  repeats), gives up with the last error after `RUN_RETRIES`, does not repeat `400`,
+  `404` or `500`, and `answer_with_stats` never repeats.
+- `run_app` explains `503`, `429`, `404` and another code in a line that starts with
+  `Error:`, returns `1` and prints no traceback.
 
 ### `tests/test_launcher.py` (new)
 

@@ -55,6 +55,22 @@ B's and C's parts are merged and wired in. Checklist:
       the Planner was merged.
 - [x] Docs: the stage files are up to date and all stages are `done`.
 
+### Free-tier limits found with the real API
+
+- **`503` (overload) is on Google's side.** One call in six answered it in a test of single,
+  sequential calls, and the errors come in bursts (three questions in a row failed). In a
+  run of the five evaluation questions, two were answered and three failed. The pipeline
+  makes about ten calls per question, so even a low rate of `503` often hits one of
+  them. `answer` therefore repeats a whole run twice (20 s apart), and `main.py` prints a
+  readable message instead of a traceback. See [a7-integration.md](a7-integration.md).
+- **`MODEL_HEAVY=gemini-3.5-flash` has a quota of 20 requests per day** (shared with
+  `gemini-3.6-flash`). The Writer makes one call per question, so it limits a day to about
+  20 questions per key, and the 25 runs of the benchmark do not fit. `gemini-3.5-flash-lite`
+  showed no such limit. Use it as `MODEL_HEAVY` for a day of experiments (the whole team
+  the same). See the README, section "Models".
+- **The cache does not replay a question with several sub-questions in full**, see
+  [a8-cache-and-retries.md](a8-cache-and-retries.md).
+
 ### Checked with the real API
 
 - [x] A whole run with the Planner on "How does BERT build on the Transformer

@@ -217,6 +217,40 @@ the agent steps, including parallel search branches, the Writer and the Critic.
 The report is the Writer's answer. Two differences from `python main.py`: the demo
 does not run the tests first, and it does not do the one revision after a rejecting Critic.
 
+**Choosing the model from the chat.** `adk web` cannot show our own buttons, so the switch
+is a command at the start of a message:
+
+| Message | What happens |
+|---------|--------------|
+| `/lite What is LoRA?` | The Writer uses `MODEL_LIGHT` (`gemini-3.5-flash-lite`). No daily limit of 20. |
+| `/heavy What is LoRA?` | The Writer uses `MODEL_HEAVY` again. |
+| `What is LoRA?` | The same model as the last command in this chat. At the start of a chat: `MODEL_HEAVY`. |
+
+The command is not part of the question. The choice stays for the whole chat, so type it
+once. A new chat starts with `MODEL_HEAVY`. Only the Writer changes, the other agents always
+use `MODEL_LIGHT`. To see which model answered, open the **State** tab of the session in
+`adk web`: `writer_model_choice` is your choice and `writer_model_used` is the model name of
+the last Writer call. Put the command and the question in one message: a message with only
+`/lite` also runs the pipeline, on an empty question.
+
+The last message of the chat is the Critic's verdict as raw JSON (`approved`,
+`assessments`, ...), because the interface shows the answer of every agent in turn. The
+report is the Writer's message above it.
+
+### Before a presentation
+
+The free tier can answer `503` (overload) or `429` (daily limit) at any moment, so
+prepare the day before:
+
+1. Check the quota of the heavy model, see "Models": with `MODEL_HEAVY=gemini-3.5-flash`
+   there are only 20 requests per day. In the web interface start the chat with `/lite`
+   (see above) for a day of demos, no change of `.env` needed.
+2. Ask each question you plan to show once, with the cache on (the default). Ask it
+   again: the second answer should come much faster, because most calls are replayed
+   from `.cache/llm/` (see "Cache and retries" for what is asked again).
+3. Keep the results of the benchmark and a screenshot of one good answer as a fallback.
+4. If a question fails with `503`, ask it again after a minute. Do not change anything.
+
 ## Experiments
 
 The evaluation compares five configurations, E0 to E4, using the same five
@@ -357,6 +391,17 @@ every model call is protected:
 - **Switch it off for measurements.** The evaluation measures latency and token use,
   and a cached answer returns at once and costs no tokens. Set `LLM_CACHE=off` for
   every measured run. Delete `.cache/` to start fresh.
+- **Repeats of a whole run.** When the API stays overloaded after the retries of every
+  call, `python main.py "<question>"` repeats the whole run up to twice, 20 seconds
+  apart. With the cache on the calls that worked are not asked again. The measured runs
+  (`answer_with_stats`) never repeat a run, because the repeat would count into the
+  latency. In the web interface nothing repeats: ask the same question again.
+- **What the cache does not replay.** A question that the Planner splits into several
+  sub-questions runs them in parallel branches, and the Writer and the Critic see the
+  events of the branches in the order they finished, which differs from run to run. Their
+  two calls are therefore asked again on a repeat, while the Planner, the Searchers and
+  the Readers come from the cache. A question with one sub-question is replayed in full.
+  So a repeat is cheaper and shorter, but not free of the API.
 
 ## Models
 
@@ -377,6 +422,20 @@ python -c "from dotenv import load_dotenv; load_dotenv(); from google import gen
 Use stable names, not `*-latest` aliases or `*-preview` models, so experiments stay
 reproducible. Before choosing a model, check on the Gemini API pricing page that its
 free tier column says **Free of charge**.
+
+**Daily limit of the heavy model.** On our free-tier key `gemini-3.5-flash` and
+`gemini-3.6-flash` share one quota of **20 requests per day** (the API's `429` message
+names the metric `GenerateRequestsPerDayPerProjectPerModel-FreeTier` and the model
+`gemini-3.6-flash` even for a call to `gemini-3.5-flash`). The Writer makes one call per
+question, plus one for a revision, so about 20 questions per day and key are all that
+`MODEL_HEAVY=gemini-3.5-flash` allows. The 25 runs of the benchmark do not fit in a day.
+`gemini-3.5-flash-lite` answered normally the whole time and showed no such limit. For a
+day of experiments set `MODEL_HEAVY=gemini-3.5-flash-lite` in `.env` (the whole team the
+same, or the results are not comparable). For a demo in the web interface it is enough to
+start the chat with `/lite` (see "Demo in the browser"). The reports may be a bit weaker than
+with the larger model. The limit resets about once a day (the message says after how
+long to retry). The limits can change, so read the `429` message before you plan a day.
+Note that `.env.example` sets `MODEL_HEAVY=gemini-3.6-flash`, which has this limit.
 
 ## Project structure
 
@@ -414,8 +473,8 @@ Read [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) before your first change. In s
 |---------|---------------|
 | `RuntimeError: Cannot send a request, as the client has been closed` | The client was not kept in a variable and got closed. Write `c = genai.Client()` and then use `c`. |
 | `404 NOT_FOUND ... no longer available to new users` | The model was retired. List the models (command above) and pick a current one. |
-| `503 UNAVAILABLE ... high demand` | Temporary overload on Google's side. Wait a few minutes and retry. |
-| `429 RESOURCE_EXHAUSTED` | Free-tier rate limit reached. Wait a minute, or until the next day for the daily limit. |
+| `503 UNAVAILABLE ... high demand` | Temporary overload on Google's side. About one call in six answered it in our test, even one at a time, and the errors come in bursts. Ask the same question again after a minute: with the cache on, the calls that worked are not asked again. |
+| `429 RESOURCE_EXHAUSTED` | Free-tier limit reached. If the message says `per day` (for example `limit: 20, model: gemini-3.6-flash`), wait until it says you can retry, or use `MODEL_HEAVY=gemini-3.5-flash-lite`, see "Models". |
 | `API key not valid` | Check `.env`: no quotes, no spaces around `=`, the whole key is present. |
 | `(.venv)` is missing in the prompt | The environment is not activated. Run the activation command from step 2. |
 | `Error: No paper corpus at ...` or `Corpus is missing` | The corpus is not built. Do step 6 (`fetch`, then `index`). |

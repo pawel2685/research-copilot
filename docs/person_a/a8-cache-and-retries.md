@@ -111,6 +111,19 @@ Twenty-three tests with `tmp_path`:
 - On the real ADK runner with a fake model: a repeated run does not call the model at
   all and gives the same report. With the switch off, every run calls it.
 
+**Limit found with the real API.** The test above has one sub-question, which is a
+single branch. With the real model, a repeated question that the Planner splits into
+two sub-questions did not replay in full: the Writer and the Critic asked the model again
+(the other agents came from the cache), so the second run took 44 to 62 s and gave a
+slightly different report. The likely cause is that the Writer and the Critic get the
+conversation history, in which the events of the parallel branches are in the order the
+branches finished, and that order changes between runs, so the cache key changes. A
+question with one sub-question replayed in full (15 requests, no new cache file). It was
+not fixed: `include_contents='none'` still starts the "current turn" at the last event of
+another agent, which has the same order problem, and a change of what the Writer and the
+Critic see could not be re-measured the day it was found (see the daily limit in the
+README). A repeat is cheaper and shorter, but it is not free of the API.
+
 ### `tests/test_retry.py` (new)
 
 The tests run the retry policy that the SDK builds from our options, with the sleep
