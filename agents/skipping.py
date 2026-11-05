@@ -7,6 +7,7 @@ original question is used, and a skipped Critic means the report stays unverifie
 from __future__ import annotations
 
 import json
+import re
 import time
 from collections.abc import Callable
 from typing import Any
@@ -18,11 +19,14 @@ from agents.deadline import Deadline
 from contracts import Chunk, Report, RunConfig
 
 # The time an agent needs. The Critic value was checked with 3 real runs (the Critic added
-# 0 to 26 s, 9 s on average). The Planner value is still an example: there is no Planner.
+# 0 to 26 s, 9 s on average). The Planner value is still an example: it was not measured.
 PLANNER_MIN_LEFT_S = 40.0
 CRITIC_MIN_LEFT_S = 30.0
 
 MAX_SUB_QUESTIONS = 4
+
+# The content of a Markdown code fence that wraps the whole text, with or without a language.
+_CODE_FENCE = re.compile(r"\s*```[a-zA-Z]*\s*(.*?)\s*```\s*", re.DOTALL)
 
 PlannerFn = Callable[[str], list[str]]
 CriticFn = Callable[[Report, list[Chunk]], CriticResult]
@@ -100,11 +104,13 @@ def normalize_sub_questions(value: Any, question: str) -> list[str]:
     """Turn the Planner output into at most four non-empty sub-questions.
 
     Accepts `None`, a list of strings, a dict with a `questions` list, or a JSON
-    string of either. Returns `[question]` when nothing usable is given.
+    string of either, also inside a Markdown code fence (models add one even when
+    told not to). Returns `[question]` when nothing usable is given.
     """
     if isinstance(value, str):
+        fenced = _CODE_FENCE.match(value)
         try:
-            value = json.loads(value)
+            value = json.loads(fenced.group(1) if fenced else value)
         except ValueError:
             return [question]
     if isinstance(value, dict):
