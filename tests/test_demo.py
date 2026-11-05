@@ -81,6 +81,37 @@ def test_start_callback_prepares_the_state_for_the_question(demo):
     assert all(ctx.state[f"reading_notes_{n}"] == "" for n in range(1, 5))
 
 
+def test_start_callback_reads_the_model_command_and_strips_it_from_the_question(demo):
+    ctx = _ctx("/lite What is LoRA?")
+    demo.make_start_callback(RunConfig())(ctx)
+    assert ctx.state["question"] == "What is LoRA?"
+    assert ctx.state["sub_questions"] == ["What is LoRA?"]
+    assert ctx.state["writer_model_choice"] == "light"
+
+
+def test_the_model_choice_stays_until_it_is_changed(demo):
+    state = {}
+    start = demo.make_start_callback(RunConfig())
+    start(_ctx("/lite first", state))
+    start(_ctx("second", state))
+    assert state["writer_model_choice"] == "light"
+    start(_ctx("/heavy third", state))
+    assert state["writer_model_choice"] == "heavy"
+    assert state["question"] == "third"
+
+
+def test_a_message_without_a_command_sets_no_choice(demo):
+    ctx = _ctx("What is LoRA?")
+    demo.make_start_callback(RunConfig())(ctx)
+    assert "writer_model_choice" not in ctx.state
+
+
+def test_the_demo_writer_can_switch_models(demo):
+    writer = demo.root_agent.sub_agents[2]
+    assert writer.name == "writer"
+    assert writer.before_model_callback[0].__name__ == "override"
+
+
 def test_start_callback_starts_a_second_question_fresh(demo):
     state = {"deadline_at": 1.0, "reading_notes_2": "old notes", "sub_questions": ["old"]}
     ctx = _ctx("new question", state)
