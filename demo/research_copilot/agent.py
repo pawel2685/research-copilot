@@ -7,6 +7,9 @@ Run from the repository root:
 and pick `research_copilot` in the browser. The demo shows the ADK flow (Planner,
 parallel search branches, Writer, Critic). It does not do the one revision after a
 rejecting Critic: that step lives in `agents/runner.py`, outside the ADK flow.
+
+Start a message with `/lite` or `/heavy` to choose the model of the Writer for that chat
+(`MODEL_LIGHT` or `MODEL_HEAVY`, see `agents/model_switch.py`).
 """
 import sys
 import time
@@ -23,11 +26,14 @@ load_dotenv(ROOT / ".env")
 
 from google.adk.agents import SequentialAgent  # noqa: E402
 
+from agents.config import load_models  # noqa: E402
 from agents.critic import create_critic_agent  # noqa: E402
+from agents.model_switch import CHOICE_KEY, add_writer_switch, split_command  # noqa: E402
 from agents.orchestrator import build_pipeline, notes_keys  # noqa: E402
 from agents.pipeline import default_search  # noqa: E402
 from agents.planner import create_planner_agent  # noqa: E402
 from agents.tools import make_search_tool  # noqa: E402
+from agents.verdict import ReadableSequentialAgent  # noqa: E402
 from contracts import RunConfig  # noqa: E402
 
 
@@ -41,7 +47,12 @@ def make_start_callback(cfg: RunConfig):
 
     def start_run(ctx) -> None:
         parts = ctx.user_content.parts if ctx.user_content else []
-        question = "".join(part.text or "" for part in parts).strip()
+        text = "".join(part.text or "" for part in parts)
+        # `/lite` or `/heavy` before the question chooses the model of the Writer, and the
+        # choice stays for the rest of the chat. A message without a command keeps it.
+        choice, question = split_command(text)
+        if choice:
+            ctx.state[CHOICE_KEY] = choice
         ctx.state["question"] = question
         ctx.state["sub_questions"] = [question]
         ctx.state["deadline_at"] = time.time() + cfg.time_budget_s
@@ -63,9 +74,11 @@ def build_demo_pipeline(cfg: RunConfig | None = None) -> SequentialAgent:
         search_tool=search_tool,
         planner=create_planner_agent() if cfg.use_planner else None,
         critic=create_critic_agent() if cfg.use_critic else None,
+        pipeline_class=ReadableSequentialAgent,
     )
     pipeline.before_agent_callback = make_start_callback(cfg)
-    return pipeline
+    light, heavy = load_models()
+    return add_writer_switch(pipeline, light, heavy)
 
 
 root_agent = build_demo_pipeline()

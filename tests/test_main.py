@@ -113,6 +113,32 @@ def test_run_app_without_a_question_prints_usage_and_fails(monkeypatch, capsys, 
     assert "Usage" in capsys.readouterr().out
 
 
+@pytest.mark.parametrize(
+    "code, expected",
+    [
+        (503, "overloaded"),
+        (429, "limit"),
+        (404, "MODEL_LIGHT"),
+        (400, "answered 400"),
+    ],
+)
+def test_run_app_explains_the_errors_of_the_model_api(monkeypatch, capsys, code, expected):
+    from google.genai import errors
+
+    cls = errors.ServerError if code >= 500 else errors.ClientError
+
+    def broken(question):
+        raise cls(code, {"error": {"code": code, "message": "the details", "status": "X"}})
+
+    monkeypatch.setattr(main, "answer", broken)
+
+    assert main.run_app(["question"]) == 1
+    out = capsys.readouterr().out
+    assert out.startswith("Error: ")
+    assert expected in out
+    assert "Traceback" not in out
+
+
 def test_run_app_reports_a_configuration_error(monkeypatch, capsys):
     def broken(question):
         raise RuntimeError("MODEL_LIGHT is missing.")
