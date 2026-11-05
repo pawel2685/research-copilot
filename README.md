@@ -233,9 +233,13 @@ use `MODEL_LIGHT`. To see which model answered, open the **State** tab of the se
 the last Writer call. Put the command and the question in one message: a message with only
 `/lite` also runs the pipeline, on an empty question.
 
-The last message of the chat is the Critic's verdict as raw JSON (`approved`,
-`assessments`, ...), because the interface shows the answer of every agent in turn. The
-report is the Writer's message above it.
+The chat shows the answer of every agent in turn, so the last message is the Critic's
+verdict. It is shown as a short text: `Critic: approved` or `Critic: changes needed`, how
+many claims are supported, each claim with its status and sources, and the corrections for
+the Writer when it asks for any. The report is the Writer's message above it. The Critic
+checks the claims against the titles and abstracts of the retrieved papers only, so
+`approved` means "the claims fit the abstracts", not "the report is true". The data of the
+verdict (`critic_result`) stays unchanged in the State tab.
 
 ### Before a presentation
 

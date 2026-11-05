@@ -69,6 +69,39 @@ with the models of `.env` (`load_models()`), so no model name is written in the 
 live check with the quota of `MODEL_HEAVY` used up: `/lite What is chain-of-thought
 prompting?` ran the Writer on `gemini-3.5-flash-lite` and gave a report.
 
+### `agents/verdict.py` (new, added later)
+
+The chat of `adk web` prints the answer of every agent, and the Critic answers in a fixed
+JSON format, so the chat ended with raw JSON. The module shows the verdict as text.
+
+- **`format_critic_result(result)`.** A short Markdown text: `### Critic: approved`,
+  `changes needed` or `skipped`, how many claims are supported, one line per claim with its
+  status and sources, the reason (only for a claim that is not supported), the corrections
+  for the Writer, and a line that the Critic saw only titles and abstracts. A skipped Critic
+  shows its message (for example the time budget) and says the report is not verified.
+- **`readable_event(event)`.** Replaces the JSON text of a message of the author `critic`
+  with that text. A message of another agent, a partial one, one that is not a valid
+  `CriticResult`, and one without text are returned unchanged.
+- **`ReadableSequentialAgent`.** A `SequentialAgent` that passes every event through
+  `readable_event`. ADK saves the result of the Critic in the state (`critic_result`) before
+  the message is sent on, so the data is not changed, only what the chat shows.
+
+### `agents/orchestrator.py` (changed, same change)
+
+`build_pipeline` takes `pipeline_class` (default `SequentialAgent`), the class of the whole
+flow. The demo passes `ReadableSequentialAgent`. The app (`answer`) and the evaluation keep
+the plain `SequentialAgent`, so nothing that they read changes.
+
+### `tests/test_verdict.py` (new, added later)
+
+- The text for an approved, a rejected (with a reason and corrections), a skipped verdict,
+  a skipped one without a message, and one without claims.
+- `readable_event` changes only the valid JSON message of the Critic.
+- On the real ADK runner with a fake model: the Critic's message in the chat is the text,
+  the Writer's message is unchanged, and `critic_result` in the state still holds the data.
+  A plain `SequentialAgent` still shows the JSON, and the demo's `root_agent` is the readable
+  class.
+
 ### `tests/test_model_switch.py` (new, added later)
 
 - `split_command`: commands, case, extra spaces, a command alone, and what is not a command.

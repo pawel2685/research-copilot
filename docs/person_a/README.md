@@ -70,6 +70,12 @@ B's and C's parts are merged and wired in. Checklist:
   the same). See the README, section "Models".
 - **The cache does not replay a question with several sub-questions in full**, see
   [a8-cache-and-retries.md](a8-cache-and-retries.md).
+- **The Critic is lenient.** It approved a report whose claim said that RAG works "without
+  modifying model weights", while the abstract of the RAG paper describes a fine-tuning
+  recipe. In one live run of the demo it also listed `searcher_2`, the name of an agent, as
+  the source of two claims that no paper backs (a statement about adapters, and a general
+  statement about RAG). Both look like an effect of the prompt in `agents/critic.py` (C's
+  file) and of the Critic seeing the conversation of the agents. Worth telling C.
 
 ### Checked with the real API
 
