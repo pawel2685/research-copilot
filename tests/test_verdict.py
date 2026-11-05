@@ -11,7 +11,12 @@ from google.genai import types
 from agents.critic import ClaimAssessment, CriticResult, create_critic_agent, critic_skipped_result
 from agents.orchestrator import build_pipeline, notes_keys
 from agents.tools import make_search_tool
-from agents.verdict import ReadableSequentialAgent, format_critic_result, readable_event
+from agents.verdict import (
+    ReadableSequentialAgent,
+    format_critic_result,
+    format_final_message,
+    readable_event,
+)
 from contracts import RunConfig
 from stubs.search import search as stub_search
 from tests.fake_llm import FakeLlm
@@ -21,21 +26,16 @@ def _claim(text="LoRA freezes the weights.", status="supported", ids=("2106.0968
     return ClaimAssessment(claim=text, status=status, source_ids=list(ids), rationale=why)
 
 
-def test_an_approved_verdict_is_a_short_readable_summary():
+def test_an_approved_verdict_is_one_line():
     text = format_critic_result(CriticResult(approved=True, assessments=[_claim(), _claim("B.", ids=("1706.03762",))]))
 
-    assert text.startswith("### Critic: approved")
-    assert "2 of 2 claims are supported" in text
-    assert "The report is **verified**." in text
-    assert "- **supported** [2106.09685]: LoRA freezes the weights." in text
-    assert "- **supported** [1706.03762]: B." in text
-    assert "titles and abstracts" in text
+    assert text == "**Verified** · 2 of 2 claims supported (checked against titles and abstracts only)"
+    # The claims that are fine are not listed: their sources are already in the report.
+    assert "LoRA freezes the weights." not in text
     assert "{" not in text and '"approved"' not in text
-    # A supported claim needs no explanation.
-    assert "Why:" not in text
 
 
-def test_a_rejected_verdict_lists_the_problems_and_the_corrections():
+def test_a_rejected_verdict_lists_only_the_problems_and_the_corrections():
     result = CriticResult(
         approved=False,
         assessments=[
@@ -48,9 +48,7 @@ def test_a_rejected_verdict_lists_the_problems_and_the_corrections():
 
     text = format_critic_result(result)
 
-    assert text.startswith("### Critic: changes needed")
-    assert "1 of 3 claims are supported" in text
-    assert "The report is **not verified**." in text
+    assert text.startswith("**Not verified** · 1 of 3 claims supported")
     assert "- **unsupported** [2005.11401]: RAG never changes weights." in text
     assert "  - Why: The abstract mentions fine-tuning." in text
     # A claim without sources has no brackets.
@@ -58,26 +56,57 @@ def test_a_rejected_verdict_lists_the_problems_and_the_corrections():
     assert "**Corrections for the Writer:**" in text
     assert "- Remove the claim about weights." in text
     assert "- Drop the speed claim." in text
+    # The supported claim is not repeated.
+    assert "LoRA freezes the weights." not in text
+
+
+def test_a_problem_without_a_reason_has_no_empty_line():
+    text = format_critic_result(CriticResult(approved=False, assessments=[_claim("X.", "unsupported", (), "")]))
+    assert "- **unsupported**: X." in text
+    assert "Why:" not in text
 
 
 def test_a_skipped_critic_says_so_and_why():
     text = format_critic_result(critic_skipped_result("Critic skipped because the time budget was insufficient."))
 
-    assert text.startswith("### Critic: skipped")
-    assert "time budget was insufficient" in text
-    assert "**not verified**" in text
+    assert text == "**Not verified** · Critic skipped: Critic skipped because the time budget was insufficient."
 
 
 def test_a_skipped_critic_without_a_message_still_explains():
-    result = CriticResult(approved=None, message="")
-    assert "was not checked" in format_critic_result(result)
+    text = format_critic_result(CriticResult(approved=None, message=""))
+    assert "the report was not checked" in text
 
 
 def test_a_verdict_without_claims_has_no_empty_list():
     text = format_critic_result(CriticResult(approved=True))
-    assert "0 of 0 claims" in text
+    assert text.startswith("**Verified** · 0 of 0 claims supported")
     assert "\n- " not in text
 
+
+def test_the_last_message_is_the_answer_with_the_verdict_under_it():
+    result = CriticResult(approved=True, assessments=[_claim()])
+
+    text = format_final_message("# Report\n\nLoRA freezes weights [2106.09685].\n", result)
+
+    assert text.startswith("# Report")
+    assert text.index("LoRA freezes weights") < text.index("**Verified**")
+    assert "\n---\n" in text
+    assert text.endswith(format_critic_result(result))
+    # No extra heading: the report has its own.
+    assert "## Answer" not in text
+
+
+@pytest.mark.parametrize("report", [None, "", "   \n"])
+def test_without_a_report_the_last_message_is_only_the_verdict(report):
+    result = CriticResult(approved=True)
+    assert format_final_message(report, result) == format_critic_result(result)
+
+
+def test_readable_event_puts_the_report_in_front_of_the_verdict():
+    event = readable_event(_event(CriticResult(approved=True).model_dump_json()), "The report.")
+    text = event.content.parts[0].text
+    assert text.startswith("The report.")
+    assert "**Verified**" in text
 
 def _event(text, author="critic", partial=False):
     return Event(
@@ -89,7 +118,7 @@ def _event(text, author="critic", partial=False):
 
 def test_the_json_message_of_the_critic_becomes_text():
     event = readable_event(_event(CriticResult(approved=True).model_dump_json()))
-    assert event.content.parts[0].text.startswith("### Critic: approved")
+    assert event.content.parts[0].text.startswith("**Verified**")
 
 
 @pytest.mark.parametrize(
@@ -170,11 +199,15 @@ def test_the_chat_of_the_real_runner_ends_with_text_and_the_state_keeps_the_data
     events, state = _run(_pipeline(FakeLlm(critic_json=critic_json), ReadableSequentialAgent))
 
     (verdict,) = _texts(events, "critic")
-    assert verdict.startswith("### Critic: changes needed")
+    # The last message is the answer with the verdict under it, not JSON.
+    writer_report = _texts(events, "writer")[0]
+    assert verdict.startswith(writer_report.strip())
+    assert "**Not verified**" in verdict
+    assert verdict.index(writer_report.strip()) < verdict.index("**Not verified**")
     assert "Fix the claim." in verdict
     assert '"approved"' not in verdict
     # The other agents are not changed.
-    assert _texts(events, "writer")[0].startswith("REPORT ")
+    assert writer_report.startswith("REPORT ")
     # The data in the session is the original result, not the text.
     assert state["critic_result"]["approved"] is False
     assert state["critic_result"]["revision_instructions"] == ["Fix the claim."]
