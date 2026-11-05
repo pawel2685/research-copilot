@@ -72,10 +72,17 @@ B's and C's parts are merged and wired in. Checklist:
   [a8-cache-and-retries.md](a8-cache-and-retries.md).
 - **The Critic is lenient.** It approved a report whose claim said that RAG works "without
   modifying model weights", while the abstract of the RAG paper describes a fine-tuning
-  recipe. In one live run of the demo it also listed `searcher_2`, the name of an agent, as
-  the source of two claims that no paper backs (a statement about adapters, and a general
-  statement about RAG). Both look like an effect of the prompt in `agents/critic.py` (C's
-  file) and of the Critic seeing the conversation of the agents. Worth telling C.
+  recipe. Worth telling C (`agents/critic.py`).
+- **A report can cite an agent instead of a paper (our side).** In live runs of the demo the
+  report itself cited `[searcher_2]` for two claims that no paper backs (a statement about
+  adapters, and a general statement about RAG). It starts before the Critic: the Searcher
+  (a small model) wrote its own text instead of returning the passages of the tool, the
+  Reader found no `paper_id` in it and signed the note with the name of the agent, and the
+  Writer repeated it. The Critic then approved it and even listed `searcher_2` as a source.
+  `Report.sources` is not affected: it only takes ids that look like arXiv ids. It is not
+  fixed yet: the prompts of the Searcher, the Reader and the Writer (`agents/searcher.py`,
+  `agents/reader.py`, `agents/writer.py`) should say that only an arXiv id from the passages
+  is a source and that a note without one is dropped, and a live check is needed.
 
 ### Checked with the real API
 

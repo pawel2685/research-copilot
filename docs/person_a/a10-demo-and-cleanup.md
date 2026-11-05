@@ -74,17 +74,26 @@ prompting?` ran the Writer on `gemini-3.5-flash-lite` and gave a report.
 The chat of `adk web` prints the answer of every agent, and the Critic answers in a fixed
 JSON format, so the chat ended with raw JSON. The module shows the verdict as text.
 
-- **`format_critic_result(result)`.** A short Markdown text: `### Critic: approved`,
-  `changes needed` or `skipped`, how many claims are supported, one line per claim with its
-  status and sources, the reason (only for a claim that is not supported), the corrections
-  for the Writer, and a line that the Critic saw only titles and abstracts. A skipped Critic
-  shows its message (for example the time budget) and says the report is not verified.
-- **`readable_event(event)`.** Replaces the JSON text of a message of the author `critic`
-  with that text. A message of another agent, a partial one, one that is not a valid
-  `CriticResult`, and one without text are returned unchanged.
+- **`format_critic_result(result)`.** One line: `**Verified** · 5 of 5 claims supported
+  (checked against titles and abstracts only)` or `**Not verified** · ...`. Only the claims
+  that are not supported are listed after it, with the reason, and then the corrections for
+  the Writer. The claims that are fine are not repeated: their sources are in the report. A
+  skipped Critic gives `**Not verified** · Critic skipped: <message>`.
+- **`format_final_message(report, result)`.** The report, a separator and the verdict. The
+  chat ends with the Critic's message, so the answer is repeated there: otherwise the last
+  thing on the screen would be the verification. Without a report only the verdict is shown.
+- **`readable_event(event, report)`.** Replaces the JSON text of a message of the author
+  `critic` with that message. A message of another agent, a partial one, one that is not a
+  valid `CriticResult`, and one without text are returned unchanged.
 - **`ReadableSequentialAgent`.** A `SequentialAgent` that passes every event through
-  `readable_event`. ADK saves the result of the Critic in the state (`critic_result`) before
-  the message is sent on, so the data is not changed, only what the chat shows.
+  `readable_event`, with `report_markdown` from the session state (the Writer's report is
+  there when the Critic's message comes). ADK saves the result of the Critic in the state
+  (`critic_result`) before the message is sent on, so the data is not changed, only what the
+  chat shows.
+- **What is not hidden.** The messages of the Planner, the Searchers and the Readers stay in
+  the chat. The Critic's instruction has no place for the report or the notes (it is C's
+  file), so it gets its evidence from the conversation, and hiding those messages would
+  blind it.
 
 ### `agents/orchestrator.py` (changed, same change)
 
