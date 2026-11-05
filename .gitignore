@@ -222,3 +222,7 @@ __marimo__/
 # Downloaded arXiv corpus and persistent vector indexes
 data/
 .adk/
+
+# Local experiment outputs and generated evaluation reports
+/outputs/
+.DS_Store

@@ -7,7 +7,7 @@ import argparse
 import json
 import time
 from pathlib import Path
-
+from agents.cache import cache_enabled
 from agents.pipeline import answer_with_stats
 from agents.retrieval_search import search as default_search
 from evals.experiment_configs import get_run_config
@@ -44,6 +44,33 @@ def _parse_names(value: str, known: tuple[str, ...], label: str) -> list[str]:
     return names
 
 
+def _is_rate_limit_error(error: Exception) -> bool:
+    """Return True when the API error indicates rate limiting or quota exhaustion."""
+
+    error_type = type(error).__name__.casefold()
+
+    if "resourceexhausted" in error_type:
+        return True
+
+    status_code = getattr(error, "status_code", None)
+    if status_code is None:
+        status_code = getattr(error, "code", None)
+
+    if status_code is not None and str(status_code) == "429":
+        return True
+
+    message = str(error).casefold()
+
+    indicators = (
+        "429 resource_exhausted",
+        "resource_exhausted",
+        "quota exceeded",
+        "generate_content_free_tier_requests",
+        "too many requests",
+    )
+
+    return any(indicator in message for indicator in indicators)
+
 def _run_one(configuration: str, question: str, time_budget: float):
     """Run one question with the selected experiment configuration."""
 
@@ -69,9 +96,51 @@ def run_benchmark(
 ) -> int:
     """Run selected experiments, resume existing results and save each success."""
 
+
+    if cache_enabled():
+        raise RuntimeError(
+            "LLM cache is enabled. Run with LLM_CACHE=off "
+            "to measure real token usage and latency."
+        )
+
     validate_question_set()
 
+    if not configurations:
+        raise ValueError("At least one configuration is required.")
+
+    if len(configurations) != len(set(configurations)):
+        raise ValueError("Configurations must be unique.")
+
+    unknown_configs = set(configurations) - set(EXPERIMENT_CONFIGS)
+    if unknown_configs:
+        raise ValueError(
+            f"Unknown configurations: {', '.join(sorted(unknown_configs))}"
+        )
+
+    if not question_ids:
+        raise ValueError("At least one question ID is required.")
+
+    if len(question_ids) != len(set(question_ids)):
+        raise ValueError("Question IDs must be unique.")
+
+    known_question_ids = {
+        question.id for question in EVALUATION_QUESTIONS
+    }
+    unknown_questions = set(question_ids) - known_question_ids
+
+    if unknown_questions:
+        raise ValueError(
+            f"Unknown question IDs: {', '.join(sorted(unknown_questions))}"
+        )
+
+    if time_budget <= 0:
+        raise ValueError("time_budget must be positive.")
+
+    if delay_seconds < 0:
+        raise ValueError("delay_seconds cannot be negative.")
+
     output_dir.mkdir(parents=True, exist_ok=True)
+
     reports_dir = output_dir / "reports"
     reports_dir.mkdir(parents=True, exist_ok=True)
 
@@ -91,10 +160,53 @@ def run_benchmark(
         load_results_csv(results_path) if results_path.exists() else []
     )
 
-    completed = {
-        (record.configuration, record.question_id)
-        for record in records
-    }
+
+    completed = set()
+    seen = set()
+    valid_records = []
+    stale_records = []
+
+    for record in records:
+        key = (record.configuration, record.question_id)
+
+        if record.configuration not in EXPERIMENT_CONFIGS:
+            raise ValueError(
+                f"Unknown configuration in results CSV: {record.configuration}"
+            )
+
+        if record.question_id not in questions_by_id:
+            raise ValueError(
+                f"Unknown question ID in results CSV: {record.question_id}"
+            )
+
+        if key in seen:
+            raise ValueError(f"Duplicate benchmark result: {key}")
+
+        seen.add(key)
+
+        report_path = reports_dir / (
+            f"{record.configuration}_{record.question_id}.md"
+        )
+
+        if not report_path.is_file() or report_path.stat().st_size == 0:
+            stale_records.append(record)
+            print(
+                f"[REPAIR] {key} has no saved report and will be rerun.",
+                flush=True,
+            )
+            continue
+
+        valid_records.append(record)
+        completed.add(key)
+
+    if stale_records:
+        records = valid_records
+
+        if records:
+            write_results_csv(records, results_path, k=RECALL_K)
+        else:
+            results_path.unlink(missing_ok=True)
+
 
     total_jobs = len(configurations) * len(selected_questions)
 
@@ -129,12 +241,21 @@ def run_benchmark(
                     time_budget,
                 )
 
+                report_path = reports_dir / (
+                    f"{configuration}_{question.id}.md"
+                )
+
+                # Save the report before marking the run as completed in the CSV.
+                report_path.write_text(
+                    report.markdown,
+                    encoding="utf-8",
+                )
+
                 record = EvaluationRecord(
                     configuration=configuration,
                     question_id=question.id,
                     retrieved_source_ids=tuple(stats.retrieved_source_ids),
                     expected_source_ids=question.expected_source_ids,
-                    # Quality is scored separately after reviewing the reports.
                     report_quality_score=None,
                     llm_calls=stats.llm_calls,
                     input_tokens=stats.input_tokens,
@@ -142,20 +263,14 @@ def run_benchmark(
                     latency_seconds=stats.latency_seconds,
                 )
 
-                records.append(record)
+                updated_records = [*records, record]
 
-                # Persist immediately so successful runs survive interruptions.
-                write_results_csv(records, results_path, k=RECALL_K)
+                # Persist only after the corresponding report has been saved.
+                write_results_csv(updated_records, results_path, k=RECALL_K)
 
-                report_path = reports_dir / (
-                    f"{configuration}_{question.id}.md"
-                )
-                report_path.write_text(
-                    report.markdown,
-                    encoding="utf-8",
-                )
-
+                records = updated_records
                 completed.add(key)
+
 
                 print(
                     f"[OK] {configuration} / {question.id} | "
@@ -170,6 +285,7 @@ def run_benchmark(
                 print("\nBenchmark interrupted. Completed results were saved.")
                 return 130
 
+
             except Exception as error:
                 errors += 1
                 failure = {
@@ -179,14 +295,28 @@ def run_benchmark(
                     "error": str(error),
                 }
 
+                failures_path.parent.mkdir(parents=True, exist_ok=True)
+
                 with failures_path.open("a", encoding="utf-8") as file:
                     file.write(json.dumps(failure, ensure_ascii=False) + "\n")
+                    file.flush()
 
                 print(
                     f"[ERROR] {configuration} / {question.id}: "
                     f"{type(error).__name__}: {error}",
                     flush=True,
                 )
+
+                if _is_rate_limit_error(error):
+                    print(
+                        "\n[STOP] Gemini API rate limit or quota exhaustion detected. "
+                        "Benchmark stopped to avoid additional failed requests. "
+                        "Completed results were preserved. "
+                        "Run the benchmark again after the quota resets.",
+                        flush=True,
+                    )
+                    return 1
+
 
             if delay_seconds > 0:
                 time.sleep(delay_seconds)

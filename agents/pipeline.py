@@ -74,6 +74,12 @@ def _run(
         input_tokens=result.input_tokens,
         output_tokens=result.output_tokens,
         latency_seconds=time.perf_counter() - start,
+        planner_skipped_by_deadline=bool(
+            result.state.get("planner_skipped_by_deadline", False)
+        ),
+        critic_skipped_by_deadline=bool(
+            result.state.get("critic_skipped_by_deadline", False)
+        ),
     )
     return to_report(question, result), stats
 

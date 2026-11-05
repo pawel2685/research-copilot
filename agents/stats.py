@@ -18,6 +18,8 @@ class RunStats:
     input_tokens: int
     output_tokens: int
     latency_seconds: float
+    planner_skipped_by_deadline: bool = False
+    critic_skipped_by_deadline: bool = False
 
 
 @dataclass
