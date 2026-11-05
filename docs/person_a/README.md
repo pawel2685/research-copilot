@@ -55,19 +55,20 @@ B's and C's parts are merged and wired in. Checklist:
       the Planner was merged.
 - [x] Docs: the stage files are up to date and all stages are `done`.
 
-### Open items
+### Checked with the real API
 
-- [ ] A whole run with the Planner. The Planner's own output was checked with a real call
-      (its instruction and `MODEL_LIGHT`, outside ADK) on "How does BERT build on the
-      Transformer architecture, and how does LoRA make fine-tuning such models
-      cheaper?": a clean JSON array of two sub-questions, no code fence, and
-      `normalize_sub_questions` read it as two items. A whole run through the pipeline
-      was not seen: the API answered `503` (high demand) on every try that day, while
-      one-line requests to both models worked. Do it once with `python main.py` and the
-      same question, and look at the sub-questions in the `adk web` interface.
-- [ ] `PLANNER_MIN_LEFT_S` is still an example value and needs a measurement now that
-      the Planner exists. `CRITIC_MIN_LEFT_S` was measured (see
-      [a4-time-budget.md](a4-time-budget.md)).
+- [x] A whole run with the Planner on "How does BERT build on the Transformer
+      architecture, and how does LoRA make fine-tuning such models cheaper?": the Planner
+      returned a clean JSON array (no code fence) with two sub-questions, the pipeline
+      used both (10 model calls) and the report cited `1810.04805` and `2106.09685`. It
+      took 67.6 s, while the API was under load (it answered `503` on earlier tries the
+      same day).
+- [x] `PLANNER_MIN_LEFT_S` and `CRITIC_MIN_LEFT_S` were measured and kept at 40 s and
+      30 s, see [a4-time-budget.md](a4-time-budget.md).
+
+Not checked: the interface in the browser with a real question (the server starts and
+lists `research_copilot`, but the chat was not used), and `python main.py` on a machine
+without `data/`.
 
 ## Branch and commits
 

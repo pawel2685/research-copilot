@@ -210,11 +210,10 @@ Still to do by hand, because it needs the real API key:
   a `questions` list, or a JSON string of either. `normalize_sub_questions` accepts all
   of these. B's Planner (`agents/planner.py`) is told to return a JSON array of strings,
   and the skip text of a skipped Planner is a JSON array with the question, so they
-  agree. A real call of the Planner returned a clean JSON array (see "Open items" in
+  agree. The Planner returned a clean JSON array in a real run (see
   [README.md](README.md)).
-- The threshold `CRITIC_MIN_LEFT_S` was checked with real runs (see
-  [a4-time-budget.md](a4-time-budget.md)). `PLANNER_MIN_LEFT_S` is still an example
-  value.
+- The thresholds `CRITIC_MIN_LEFT_S` and `PLANNER_MIN_LEFT_S` were checked with real
+  calls (see [a4-time-budget.md](a4-time-budget.md)).
 
 ## Commit
 

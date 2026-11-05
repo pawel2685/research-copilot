@@ -175,15 +175,14 @@ with a failing gate (nothing starts). The tests of `run_app` are unchanged: a fa
 (usage, non-zero), and a `RuntimeError` (printed, `1`). The three tests of the quality
 gate are unchanged.
 
-## Open items
+## Checked with the Planner
 
-- The Planner's output was checked with one real call outside ADK: a clean JSON array of
-  two sub-questions, which the parser reads as two items. A whole run through the
-  pipeline was not seen (the API answered `503` on every try that day). The parser also
-  accepts an object with `questions` and both forms inside a code fence. See
-  [README.md](README.md).
-- `PLANNER_MIN_LEFT_S` is still an example value, see
-  [a4-time-budget.md](a4-time-budget.md).
+A whole run with the Planner on "How does BERT build on the Transformer architecture, and
+how does LoRA make fine-tuning such models cheaper?": the Planner returned a JSON array
+of two sub-questions with no code fence, the pipeline searched both (10 model calls),
+and the report cited `1810.04805` and `2106.09685`. The run took 67.6 s while the API was
+under load. The parser also accepts an object with `questions` and both forms inside a
+code fence. The thresholds were measured, see [a4-time-budget.md](a4-time-budget.md).
 
 ## Manual check (done)
 

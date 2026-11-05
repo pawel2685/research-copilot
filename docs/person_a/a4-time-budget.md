@@ -30,8 +30,13 @@ it is testable without ADK. A6 reuses the same rules inside ADK.
   (mean 28.0 s). The Critic added 9 s on average and up to about 26 s (the slowest run
   with it minus the fastest without), so 30 s is kept. Three runs are few and the
   model latency varies, so repeat the measurement if the model or the prompts change.
-  `PLANNER_MIN_LEFT_S` is still an example value. It was not measured, because the
-  Planner arrived later and the API was overloaded on the day it could have been.
+  `PLANNER_MIN_LEFT_S` was checked too: five direct calls of the Planner (its
+  instruction, `MODEL_LIGHT`) took 0.8, 1.4, 2.4, 11.3 and 15.2 s (mean 6.2 s), so 40 s
+  leaves a large margin and is kept. Not measured inside the whole pipeline. One whole
+  run with the Planner on a question about BERT and LoRA (10 model calls, a Planner
+  with two sub-questions) took 67.6 s while the API was under load, so the default budget
+  of 90 s is not generous. With the 30 s budget of the time-budget experiment the Planner
+  is always skipped, because 30 s is below the 40 s threshold.
 - **`PlannerFn` and `CriticFn`.** Type aliases for the Planner function
   (`str -> list[str]`) and the Critic function (`Report, list[Chunk] -> CriticResult`).
   They live here, not in `contracts.py`.
